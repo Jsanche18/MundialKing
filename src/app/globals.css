@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Outfit', 'Inter', sans-serif;
+}
+
+body {
+  color: #f8fafc;
+  background-color: #020617; /* slate-950 */
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Custom Mesh Gradient Background for Mundial 2026 */
+.wc2026-bg {
+  background-color: #020617;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(0, 104, 71, 0.18) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(206, 17, 38, 0.15) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(0, 43, 127, 0.18) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+}
+
+.glass-panel-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  background: rgba(23, 37, 84, 0.15); /* USA blue hue on hover */
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 12px 40px 0 rgba(0, 43, 127, 0.15);
+}
+
+.glass-panel-hover-mexico:hover {
+  background: rgba(6, 78, 59, 0.15); /* Mexico green hue on hover */
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 12px 40px 0 rgba(0, 104, 71, 0.15);
+}
+
+.glass-panel-hover-canada:hover {
+  background: rgba(153, 27, 27, 0.15); /* Canada red hue on hover */
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 12px 40px 0 rgba(206, 17, 38, 0.15);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(2, 6, 23, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.8);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.8);
+}
+
+/* Custom Score Font styled */
+.score-font {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Pulsing red dot for LIVE */
+.live-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #ef4444;
+  border-radius: 50%;
+}
+
+.live-dot::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #ef4444;
+  border-radius: 50%;
+  animation: pulse-live 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-live {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}

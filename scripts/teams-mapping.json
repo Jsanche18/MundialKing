@@ -1,0 +1,194 @@
+{
+  "Argentina": {
+    "apiId": 26,
+    "flagUrl": "https://media.api-sports.io/football/teams/26.png"
+  },
+  "Australia": {
+    "apiId": 20,
+    "flagUrl": "https://media.api-sports.io/football/teams/20.png"
+  },
+  "Belgium": {
+    "apiId": 1,
+    "flagUrl": "https://media.api-sports.io/football/teams/1.png"
+  },
+  "Brazil": {
+    "apiId": 6,
+    "flagUrl": "https://media.api-sports.io/football/teams/6.png"
+  },
+  "Canada": {
+    "apiId": 5529,
+    "flagUrl": "https://media.api-sports.io/football/teams/5529.png"
+  },
+  "Croatia": {
+    "apiId": 3,
+    "flagUrl": "https://media.api-sports.io/football/teams/3.png"
+  },
+  "Ecuador": {
+    "apiId": 2382,
+    "flagUrl": "https://media.api-sports.io/football/teams/2382.png"
+  },
+  "England": {
+    "apiId": 10,
+    "flagUrl": "https://media.api-sports.io/football/teams/10.png"
+  },
+  "France": {
+    "apiId": 2,
+    "flagUrl": "https://media.api-sports.io/football/teams/2.png"
+  },
+  "Germany": {
+    "apiId": 25,
+    "flagUrl": "https://media.api-sports.io/football/teams/25.png"
+  },
+  "Ghana": {
+    "apiId": 1504,
+    "flagUrl": "https://media.api-sports.io/football/teams/1504.png"
+  },
+  "Iran": {
+    "apiId": 22,
+    "flagUrl": "https://media.api-sports.io/football/teams/22.png"
+  },
+  "Japan": {
+    "apiId": 12,
+    "flagUrl": "https://media.api-sports.io/football/teams/12.png"
+  },
+  "Mexico": {
+    "apiId": 16,
+    "flagUrl": "https://media.api-sports.io/football/teams/16.png"
+  },
+  "Morocco": {
+    "apiId": 31,
+    "flagUrl": "https://media.api-sports.io/football/teams/31.png"
+  },
+  "Netherlands": {
+    "apiId": 1118,
+    "flagUrl": "https://media.api-sports.io/football/teams/1118.png"
+  },
+  "Portugal": {
+    "apiId": 27,
+    "flagUrl": "https://media.api-sports.io/football/teams/27.png"
+  },
+  "Qatar": {
+    "apiId": 1569,
+    "flagUrl": "https://media.api-sports.io/football/teams/1569.png"
+  },
+  "Saudi Arabia": {
+    "apiId": 23,
+    "flagUrl": "https://media.api-sports.io/football/teams/23.png"
+  },
+  "Senegal": {
+    "apiId": 13,
+    "flagUrl": "https://media.api-sports.io/football/teams/13.png"
+  },
+  "South Korea": {
+    "apiId": 17,
+    "flagUrl": "https://media.api-sports.io/football/teams/17.png"
+  },
+  "Spain": {
+    "apiId": 9,
+    "flagUrl": "https://media.api-sports.io/football/teams/9.png"
+  },
+  "Switzerland": {
+    "apiId": 15,
+    "flagUrl": "https://media.api-sports.io/football/teams/15.png"
+  },
+  "Tunisia": {
+    "apiId": 28,
+    "flagUrl": "https://media.api-sports.io/football/teams/28.png"
+  },
+  "USA": {
+    "apiId": 2384,
+    "flagUrl": "https://media.api-sports.io/football/teams/2384.png"
+  },
+  "Uruguay": {
+    "apiId": 7,
+    "flagUrl": "https://media.api-sports.io/football/teams/7.png"
+  },
+  "Algeria": {
+    "apiId": 1532,
+    "flagUrl": "https://media.api-sports.io/football/teams/1532.png"
+  },
+  "Austria": {
+    "apiId": 775,
+    "flagUrl": "https://media.api-sports.io/football/teams/775.png"
+  },
+  "Colombia": {
+    "apiId": 8,
+    "flagUrl": "https://media.api-sports.io/football/teams/8.png"
+  },
+  "Curaçao": {
+    "apiId": 5530,
+    "flagUrl": "https://media.api-sports.io/football/teams/5530.png"
+  },
+  "Czech Republic": {
+    "apiId": 770,
+    "flagUrl": "https://media.api-sports.io/football/teams/770.png"
+  },
+  "Egypt": {
+    "apiId": 32,
+    "flagUrl": "https://media.api-sports.io/football/teams/32.png"
+  },
+  "Haiti": {
+    "apiId": 2386,
+    "flagUrl": "https://media.api-sports.io/football/teams/2386.png"
+  },
+  "Iraq": {
+    "apiId": 1567,
+    "flagUrl": "https://media.api-sports.io/football/teams/1567.png"
+  },
+  "Ivory Coast": {
+    "apiId": 1501,
+    "flagUrl": "https://media.api-sports.io/football/teams/1501.png"
+  },
+  "Jordan": {
+    "apiId": 1548,
+    "flagUrl": "https://media.api-sports.io/football/teams/1548.png"
+  },
+  "New Zealand": {
+    "apiId": 4673,
+    "flagUrl": "https://media.api-sports.io/football/teams/4673.png"
+  },
+  "Norway": {
+    "apiId": 1090,
+    "flagUrl": "https://media.api-sports.io/football/teams/1090.png"
+  },
+  "DR Congo": {
+    "apiId": 1508,
+    "flagUrl": "https://media.api-sports.io/football/teams/1508.png"
+  },
+  "Panama": {
+    "apiId": 11,
+    "flagUrl": "https://media.api-sports.io/football/teams/11.png"
+  },
+  "Paraguay": {
+    "apiId": 2380,
+    "flagUrl": "https://media.api-sports.io/football/teams/2380.png"
+  },
+  "Scotland": {
+    "apiId": 1108,
+    "flagUrl": "https://media.api-sports.io/football/teams/1108.png"
+  },
+  "South Africa": {
+    "apiId": 1531,
+    "flagUrl": "https://media.api-sports.io/football/teams/1531.png"
+  },
+  "Sweden": {
+    "apiId": 5,
+    "flagUrl": "https://media.api-sports.io/football/teams/5.png"
+  },
+  "Uzbekistan": {
+    "apiId": 1568,
+    "flagUrl": "https://media.api-sports.io/football/teams/1568.png"
+  },
+  "Bosnia & Herzegovina": {
+    "apiId": 1113,
+    "flagUrl": "https://media.api-sports.io/football/teams/1113.png"
+  },
+  "Cape Verde": {
+    "apiId": 1533,
+    "flagUrl": "https://media.api-sports.io/football/teams/1533.png"
+  },
+  "Turkey": {
+    "apiId": 777,
+    "flagUrl": "https://media.api-sports.io/football/teams/777.png"
+  }
+}
