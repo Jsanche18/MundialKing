@@ -131,54 +131,10 @@ async function main() {
   }
   console.log('Equipos oficiales guardados exitosamente.');
 
-  // 4. Descargar Jugadores (Plantillas de cada equipo real)
-  const headers = {
-    'x-apisports-key': API_KEY
-  };
-  console.log('\nDescargando plantillas de jugadores (Squads) para las 48 selecciones...');
-  console.log('Aplicando una pausa de 6.2 segundos entre equipos para respetar el límite de 10 peticiones/minuto...');
-
+  // 4. Descargar Jugadores (Bypassed due to API limits, handled offline by populate-missing-players.js)
+  console.log('\n[API-Football] Omitiendo descarga de jugadores en línea para no agotar la cuota de la API.');
+  console.log('Los jugadores se poblarán localmente de forma offline usando el script populate-missing-players.js.');
   let playerCount = 0;
-  for (let idx = 0; idx < savedRealTeams.length; idx++) {
-    const team = savedRealTeams[idx];
-    console.log(`[${idx + 1}/${savedRealTeams.length}] Descargando jugadores de: ${team.name} (ID: ${team.apiId})...`);
-
-    const squadUrl = `https://${API_HOST}/players/squads?team=${team.apiId}`;
-    try {
-      const squadData = await fetchWithRetry(squadUrl, { headers });
-      const squadInfo = squadData.response?.[0];
-      const playersList = squadInfo?.players || [];
-
-      console.log(` -> Encontrados ${playersList.length} jugadores. Guardando en DB...`);
-      for (const p of playersList) {
-        await prisma.player.upsert({
-          where: { apiId: p.id },
-          update: {
-            name: p.name,
-            teamId: team.apiId,
-            position: translatePosition(p.position),
-            photoUrl: p.photo || 'https://media.api-sports.io/football/players/unknown.png'
-          },
-          create: {
-            apiId: p.id,
-            name: p.name,
-            teamId: team.apiId,
-            position: translatePosition(p.position),
-            photoUrl: p.photo || 'https://media.api-sports.io/football/players/unknown.png'
-          }
-        });
-        playerCount++;
-      }
-    } catch (err) {
-      console.error(`Error no crítico descargando plantilla para ${team.name} (ID: ${team.apiId}): ${err.message}. Continuando...`);
-    }
-
-    // Pausa de 6.2 segundos para respetar el límite de la API
-    if (idx < savedRealTeams.length - 1) {
-      await delay(6200);
-    }
-  }
-  console.log(`Plantillas de jugadores guardadas. Total de jugadores registrados: ${playerCount}`);
 
   // 5. Descargar y procesar calendario de 104 partidos de openfootball
   console.log('\nDescargando calendario oficial del Mundial 2026 de openfootball...');
