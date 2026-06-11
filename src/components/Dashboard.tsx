@@ -1715,8 +1715,8 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                     <tr className="border-b border-slate-800/60 bg-slate-900/40 text-slate-400 text-xs font-semibold uppercase tracking-wider">
                       <th className="px-6 py-4 w-16 text-center">Pos</th>
                       <th className="px-6 py-4">Usuario</th>
-                      <th className="px-6 py-4 hidden md:table-cell">Elección Draft (Equipo)</th>
-                      <th className="px-6 py-4 hidden lg:table-cell">Jugador Estrella (Draft)</th>
+                      <th className="px-6 py-4 hidden md:table-cell">Equipos (Draft)</th>
+                      <th className="px-6 py-4 hidden lg:table-cell">Jugadores Estrella</th>
                       <th className="px-6 py-4 text-center">Exacto (+3)</th>
                       <th className="px-6 py-4 text-center">Ganador (+1)</th>
                       <th className="px-6 py-4 text-center hidden md:table-cell">Goles (+1)</th>
@@ -1761,35 +1761,70 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                           </td>
                           
                           <td className="px-6 py-5 hidden md:table-cell text-sm">
-                            {member.selectedTeamName ? (
-                              <div className="flex items-center gap-2">
-                                <img 
-                                  src={teams.find(t => t.apiId === member.selectedTeamId)?.flagUrl} 
-                                  alt="Flag" 
-                                  className="h-4 w-6 rounded-sm object-cover"
-                                />
-                                <span className="font-semibold text-slate-200">{member.selectedTeamName}</span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-500 text-xs italic">No seleccionado</span>
-                            )}
+                            <div className="space-y-2">
+                              {member.selectedTeamName ? (
+                                <div className="flex items-center gap-2" title="Equipo Principal">
+                                  <img 
+                                    src={teams.find(t => t.apiId === member.selectedTeamId)?.flagUrl} 
+                                    alt="Flag" 
+                                    className="h-4 w-6 rounded-sm object-cover shrink-0"
+                                  />
+                                  <span className="font-semibold text-slate-200">{member.selectedTeamName}</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-500 text-xs italic block">Principal: No seleccionado</span>
+                              )}
+
+                              {member.selectedWeakTeamName ? (
+                                <div className="flex items-center gap-2 border-t border-slate-800/40 pt-1.5" title="Selección Gloriosa">
+                                  <img 
+                                    src={teams.find(t => t.apiId === member.selectedWeakTeamId)?.flagUrl} 
+                                    alt="Flag" 
+                                    className="h-4 w-6 rounded-sm object-cover shrink-0"
+                                  />
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-semibold text-amber-400">{member.selectedWeakTeamName}</span>
+                                    <span className="text-[8px] bg-amber-500/10 text-amber-400 px-1 py-0.2 rounded font-bold uppercase tracking-wider border border-amber-500/20 shrink-0">Gloriosa</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-slate-500 text-xs italic block border-t border-slate-800/40 pt-1.5">Gloriosa: No seleccionada</span>
+                              )}
+                            </div>
                           </td>
 
                           <td className="px-6 py-5 hidden lg:table-cell text-sm">
-                            {member.selectedPlayerName ? (
-                              <div className="flex items-center gap-2 text-slate-200">
-                                <div className="h-6 w-6 rounded-full overflow-hidden border border-slate-700 shrink-0">
-                                  <img 
-                                    src={players.find(p => p.apiId === member.selectedPlayerId)?.photoUrl} 
-                                    alt="Player" 
-                                    className="h-full w-full object-cover"
-                                  />
+                            <div className="space-y-2">
+                              {member.selectedPlayerName ? (
+                                <div className="flex items-center gap-2 text-slate-200" title="Estrella 1">
+                                  <div className="h-6 w-6 rounded-full overflow-hidden border border-slate-700 shrink-0">
+                                    <img 
+                                      src={players.find(p => p.apiId === member.selectedPlayerId)?.photoUrl} 
+                                      alt="Player" 
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </div>
+                                  <span className="font-semibold">{member.selectedPlayerName}</span>
                                 </div>
-                                <span className="font-semibold">{member.selectedPlayerName}</span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-500 text-xs italic">No fichado</span>
-                            )}
+                              ) : (
+                                <span className="text-slate-500 text-xs italic block">Estrella 1: No fichado</span>
+                              )}
+
+                              {member.selectedPlayer2Name ? (
+                                <div className="flex items-center gap-2 text-slate-200 border-t border-slate-800/40 pt-1.5" title="Estrella 2">
+                                  <div className="h-6 w-6 rounded-full overflow-hidden border border-slate-700 shrink-0">
+                                    <img 
+                                      src={players.find(p => p.apiId === member.selectedPlayer2Id)?.photoUrl} 
+                                      alt="Player" 
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </div>
+                                  <span className="font-semibold">{member.selectedPlayer2Name}</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-500 text-xs italic block border-t border-slate-800/40 pt-1.5">Estrella 2: No fichado</span>
+                              )}
+                            </div>
                           </td>
 
                           <td className="px-6 py-5 text-center font-display font-semibold text-slate-200">{member.exactScores}</td>
