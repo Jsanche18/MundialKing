@@ -15,6 +15,8 @@ import {
   Sparkles, 
   Clock,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   UserCheck,
   Activity,
   RotateCcw,
@@ -25,7 +27,7 @@ import {
   X
 } from 'lucide-react';
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DashboardProps {
   currentUser: {
@@ -135,6 +137,10 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
   const [playerSearchQuery, setPlayerSearchQuery] = useState('');
   const [selectedTopScorerQuery, setSelectedTopScorerQuery] = useState('');
   const [showTopScorerResults, setShowTopScorerResults] = useState(false);
+  const [isDraftTeamOpen, setIsDraftTeamOpen] = useState(true);
+  const [isDraftPlayersOpen, setIsDraftPlayersOpen] = useState(true);
+  const [isDraftScorerOpen, setIsDraftScorerOpen] = useState(true);
+  const [isDraftGloriousOpen, setIsDraftGloriousOpen] = useState(true);
 
   // Matches section filtering states
   const [matchesPhaseFilter, setMatchesPhaseFilter] = useState<'groups' | 'knockout'>('groups');
@@ -1607,375 +1613,494 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
             </div>
 
             {/* SECCIÓN 1: DRAFT DE EQUIPO */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-slate-200">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  1. Selección de Equipo Exclusivo
-                </h3>
-                {myMemberInfo?.selectedTeamName && (
-                  <span className="text-xs bg-emerald-550/20 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/30 font-semibold">
-                    Tu Selección: {myMemberInfo.selectedTeamName}
-                  </span>
-                )}
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-slate-800/90 transition-all duration-300">
+              <div 
+                onClick={() => setIsDraftTeamOpen(!isDraftTeamOpen)}
+                className={`flex items-center justify-between cursor-pointer select-none group transition-all duration-300 ${
+                  isDraftTeamOpen ? 'border-b border-slate-800/40 pb-3' : 'pb-0'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/50 transition-all duration-300 ${isDraftTeamOpen ? 'scale-110' : 'scale-75'}`} />
+                  <h3 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors duration-200">
+                    1. Selección de Equipo Exclusivo
+                  </h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  {myMemberInfo?.selectedTeamName ? (
+                    <span className="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20 font-semibold font-mono flex items-center gap-1.5 shadow-sm shadow-emerald-500/5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Tu Selección: {myMemberInfo.selectedTeamName}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/20 font-bold uppercase tracking-wider">
+                      Pendiente
+                    </span>
+                  )}
+                  <motion.div
+                    animate={{ rotate: isDraftTeamOpen ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChevronDown className="h-5 w-5 text-slate-400 group-hover:text-slate-200 transition-colors duration-200" />
+                  </motion.div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {teams.map(team => {
-                  const isTaken = team.draftedBy !== null;
-                  const isMine = team.draftedBy?.userId === currentUser.id;
-                  const isTakenByOther = isTaken && !isMine;
-
-                  return (
-                    <button
-                      key={team.apiId}
-                      disabled={isTakenByOther}
-                      onClick={() => handleSelectTeam(team.apiId)}
-                      className={`glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-3 transition-all duration-200 ${
-                        isMine 
-                          ? 'border-2 border-emerald-500 bg-gradient-to-b from-emerald-950/10 to-slate-900/60 ring-2 ring-emerald-500/20' 
-                          : isTakenByOther 
-                            ? 'opacity-40 grayscale cursor-not-allowed border-slate-850' 
-                            : 'hover:border-slate-600 hover:bg-slate-800/40 hover:-translate-y-1'
-                      }`}
-                    >
-                      <img 
-                        src={team.flagUrl} 
-                        alt={team.name} 
-                        className="h-10 w-16 object-cover rounded shadow-md"
-                      />
-                      <div className="text-center">
-                        <p className="text-xs font-bold text-slate-200 truncate max-w-[120px]">{team.name}</p>
-                        {isMine && <p className="text-[10px] text-emerald-400 font-semibold mt-1">Elegido</p>}
-                        {isTakenByOther && (
-                          <p className="text-[9px] text-red-400 font-semibold mt-1 truncate max-w-[110px]">
-                            Por {team.draftedBy?.userName}
-                          </p>
-                        )}
-                        {!isTaken && <p className="text-[10px] text-slate-500 mt-1">Disponible</p>}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* SECCIÓN 2: DRAFT DE JUGADOR */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-slate-200">
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
-                  2. Plantilla de Jugadores Exclusivos
-                </h3>
-                {(myMemberInfo?.selectedPlayerId || myMemberInfo?.selectedPlayer2Id) && (
-                  <span className="text-xs bg-red-950/20 text-red-400 px-3 py-1 rounded-full border border-red-500/30 font-semibold">
-                    Fichados: {[myMemberInfo.selectedPlayerName, myMemberInfo.selectedPlayer2Name].filter(Boolean).join(" • ")}
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                
-                {/* Left side: Search & List */}
-                <div className="lg:col-span-7 space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                    <input 
-                      type="text"
-                      placeholder="Buscar jugador por nombre o país..."
-                      value={playerSearchQuery}
-                      onChange={(e) => setPlayerSearchQuery(e.target.value)}
-                      className="w-full bg-slate-900/60 border border-slate-800 focus:border-red-500 rounded-xl py-3 pl-12 pr-4 text-slate-100 placeholder:text-slate-550 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all duration-200 text-sm"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[350px] overflow-y-auto pr-2">
-                    {players
-                      .filter(p => {
-                        const query = playerSearchQuery.toLowerCase().trim();
-                        if (!query) return true;
-                        
-                        // Nombre
-                        if (p.name.toLowerCase().includes(query)) return true;
-                        
-                        // País en inglés
-                        if (p.teamName.toLowerCase().includes(query)) return true;
-                        
-                        // País en español
-                        const translations = COUNTRY_TRANSLATIONS[p.teamName] || [];
-                        if (translations.some(t => t.includes(query))) return true;
-                        
-                        return false;
-                      })
-                      .map(player => {
-                        const isTaken = player.draftedBy !== null;
-                        const isMine = player.draftedBy?.userId === currentUser.id;
+              <AnimatePresence initial={false}>
+                {isDraftTeamOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                    animate={{ height: "auto", opacity: 1, marginTop: 20 }}
+                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {teams.map(team => {
+                        const isTaken = team.draftedBy !== null;
+                        const isMine = team.draftedBy?.userId === currentUser.id;
                         const isTakenByOther = isTaken && !isMine;
 
                         return (
-                          <div 
-                            key={player.apiId}
-                            className={`glass-panel p-3 rounded-xl flex items-center justify-between gap-3 ${
-                              isMine ? 'border-red-500/50 bg-red-950/5' : ''
-                            } ${isTakenByOther ? 'opacity-50' : ''}`}
+                          <button
+                            key={team.apiId}
+                            disabled={isTakenByOther}
+                            onClick={() => handleSelectTeam(team.apiId)}
+                            className={`glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-3 transition-all duration-200 ${
+                              isMine 
+                                ? 'border-2 border-emerald-500 bg-gradient-to-b from-emerald-950/10 to-slate-900/60 ring-2 ring-emerald-500/20' 
+                                : isTakenByOther 
+                                  ? 'opacity-40 grayscale cursor-not-allowed border-slate-850' 
+                                  : 'hover:border-slate-600 hover:bg-slate-800/40 hover:-translate-y-1'
+                            }`}
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full overflow-hidden border border-slate-700 shrink-0">
-                                <img src={player.photoUrl} alt={player.name} className="h-full w-full object-cover" />
-                              </div>
-                              <div className="overflow-hidden">
-                                <h4 className="text-xs font-bold truncate max-w-[140px]">{player.name}</h4>
-                                <p className="text-[10px] text-slate-400">{player.teamName} • {player.position}</p>
-                              </div>
+                            <img 
+                              src={team.flagUrl} 
+                              alt={team.name} 
+                              className="h-10 w-16 object-cover rounded shadow-md"
+                            />
+                            <div className="text-center">
+                              <p className="text-xs font-bold text-slate-200 truncate max-w-[120px]">{team.name}</p>
+                              {isMine && <p className="text-[10px] text-emerald-400 font-semibold mt-1">Elegido</p>}
+                              {isTakenByOther && (
+                                <p className="text-[9px] text-red-400 font-semibold mt-1 truncate max-w-[110px]">
+                                  Por {team.draftedBy?.userName}
+                                </p>
+                              )}
+                              {!isTaken && <p className="text-[10px] text-slate-500 mt-1">Disponible</p>}
                             </div>
-
-                            {isMine ? (
-                              <button 
-                                onClick={() => handleSelectPlayer(player.apiId)}
-                                className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/30 text-red-300 border border-red-500/40 hover:bg-red-600/50 transition-all duration-150 cursor-pointer"
-                              >
-                                Liberar
-                              </button>
-                            ) : isTakenByOther ? (
-                              <span className="text-[9px] text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 truncate max-w-[90px]">
-                                {player.draftedBy?.userName}
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => handleSelectPlayer(player.apiId)}
-                                className="px-3 py-1 text-[10px] font-bold rounded-lg bg-white text-slate-950 hover:bg-slate-200 transition-all duration-150 shadow cursor-pointer"
-                              >
-                                Fichar
-                              </button>
-                            )}
-                          </div>
+                          </button>
                         );
                       })}
-                  </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* SECCIÓN 2: DRAFT DE JUGADOR */}
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-slate-800/90 transition-all duration-300">
+              <div 
+                onClick={() => setIsDraftPlayersOpen(!isDraftPlayersOpen)}
+                className={`flex items-center justify-between cursor-pointer select-none group transition-all duration-300 ${
+                  isDraftPlayersOpen ? 'border-b border-slate-800/40 pb-3' : 'pb-0'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`h-2.5 w-2.5 rounded-full bg-red-500 shadow-md shadow-red-500/50 transition-all duration-300 ${isDraftPlayersOpen ? 'scale-110' : 'scale-75'}`} />
+                  <h3 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors duration-200">
+                    2. Plantilla de Jugadores Exclusivos
+                  </h3>
                 </div>
-
-                {/* Right side: Your Player Cards (Max 2, different selections) */}
-                <div className="lg:col-span-5 flex flex-col gap-4">
-                  {/* Card 1 */}
-                  <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex items-center gap-4 bg-gradient-to-tr from-slate-950 via-slate-900/40 to-slate-950 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 h-24 w-24 bg-red-500/5 rounded-full blur-2xl" />
-                    {myMemberInfo?.selectedPlayerId ? (
-                      (() => {
-                        const myPlayer = players.find(p => p.apiId === myMemberInfo.selectedPlayerId);
-                        if (!myPlayer) return null;
-                        return (
-                          <div className="flex items-center justify-between w-full z-10 relative">
-                            <div className="flex items-center gap-3">
-                              <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-red-500/50 shadow-md shrink-0">
-                                <img src={myPlayer.photoUrl} alt={myPlayer.name} className="h-full w-full object-cover" />
-                              </div>
-                              <div>
-                                <p className="text-[9px] font-semibold text-red-400 tracking-wide uppercase">{myPlayer.position} Exclusivo 1</p>
-                                <h4 className="text-sm font-bold text-slate-100 truncate max-w-[150px]">{myPlayer.name}</h4>
-                                <p className="text-xs text-slate-400">{myPlayer.teamName}</p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleSelectPlayer(myPlayer.apiId)}
-                              className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/20 text-red-300 border border-red-500/30 hover:bg-red-550/30 transition-all cursor-pointer shrink-0"
-                            >
-                              Liberar
-                            </button>
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      <div className="flex items-center gap-3 py-2 text-left z-10 relative w-full">
-                        <div className="h-12 w-12 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-slate-650 shrink-0">
-                          <User className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-350">Jugador Exclusivo 1</h4>
-                          <p className="text-[10px] text-slate-500 leading-tight">Busca y ficha tu primer jugador.</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card 2 */}
-                  <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex items-center gap-4 bg-gradient-to-tr from-slate-950 via-slate-900/40 to-slate-950 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 h-24 w-24 bg-red-500/5 rounded-full blur-2xl" />
-                    {myMemberInfo?.selectedPlayer2Id ? (
-                      (() => {
-                        const myPlayer = players.find(p => p.apiId === myMemberInfo.selectedPlayer2Id);
-                        if (!myPlayer) return null;
-                        return (
-                          <div className="flex items-center justify-between w-full z-10 relative">
-                            <div className="flex items-center gap-3">
-                              <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-red-500/50 shadow-md shrink-0">
-                                <img src={myPlayer.photoUrl} alt={myPlayer.name} className="h-full w-full object-cover" />
-                              </div>
-                              <div>
-                                <p className="text-[9px] font-semibold text-red-400 tracking-wide uppercase">{myPlayer.position} Exclusivo 2</p>
-                                <h4 className="text-sm font-bold text-slate-100 truncate max-w-[150px]">{myPlayer.name}</h4>
-                                <p className="text-xs text-slate-400">{myPlayer.teamName}</p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleSelectPlayer(myPlayer.apiId)}
-                              className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/20 text-red-300 border border-red-500/30 hover:bg-red-550/30 transition-all cursor-pointer shrink-0"
-                            >
-                              Liberar
-                            </button>
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      <div className="flex items-center gap-3 py-2 text-left z-10 relative w-full">
-                        <div className="h-12 w-12 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-slate-650 shrink-0">
-                          <User className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-350">Jugador Exclusivo 2</h4>
-                          <p className="text-[10px] text-slate-500 leading-tight">Ficha un segundo jugador de otra selección.</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                <div className="flex items-center gap-3">
+                  {(myMemberInfo?.selectedPlayerId || myMemberInfo?.selectedPlayer2Id) ? (
+                    <span className="text-xs bg-red-500/10 text-red-400 px-3 py-1 rounded-full border border-red-500/20 font-semibold font-mono flex items-center gap-1.5 shadow-sm shadow-red-500/5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+                      Fichados: {[myMemberInfo.selectedPlayerName, myMemberInfo.selectedPlayer2Name].filter(Boolean).join(" • ")}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/20 font-bold uppercase tracking-wider">
+                      Sin Fichar
+                    </span>
+                  )}
+                  <motion.div
+                    animate={{ rotate: isDraftPlayersOpen ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChevronDown className="h-5 w-5 text-slate-400 group-hover:text-slate-200 transition-colors duration-200" />
+                  </motion.div>
                 </div>
-
               </div>
+
+              <AnimatePresence initial={false}>
+                {isDraftPlayersOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                    animate={{ height: "auto", opacity: 1, marginTop: 20 }}
+                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                      {/* Left side: Search & List */}
+                      <div className="lg:col-span-7 space-y-4">
+                        <div className="relative">
+                          <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                          <input 
+                            type="text"
+                            placeholder="Buscar jugador por nombre o país..."
+                            value={playerSearchQuery}
+                            onChange={(e) => setPlayerSearchQuery(e.target.value)}
+                            className="w-full bg-slate-900/60 border border-slate-800 focus:border-red-500 rounded-xl py-3 pl-12 pr-4 text-slate-100 placeholder:text-slate-550 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all duration-200 text-sm"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[350px] overflow-y-auto pr-2">
+                          {players
+                            .filter(p => {
+                              const query = playerSearchQuery.toLowerCase().trim();
+                              if (!query) return true;
+                              if (p.name.toLowerCase().includes(query)) return true;
+                              if (p.teamName.toLowerCase().includes(query)) return true;
+                              const translations = COUNTRY_TRANSLATIONS[p.teamName] || [];
+                              if (translations.some(t => t.includes(query))) return true;
+                              return false;
+                            })
+                            .map(player => {
+                              const isTaken = player.draftedBy !== null;
+                              const isMine = player.draftedBy?.userId === currentUser.id;
+                              const isTakenByOther = isTaken && !isMine;
+
+                              return (
+                                <div 
+                                  key={player.apiId}
+                                  className={`glass-panel p-3 rounded-xl flex items-center justify-between gap-3 ${
+                                    isMine ? 'border-red-500/50 bg-red-950/5' : ''
+                                  } ${isTakenByOther ? 'opacity-50' : ''}`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full overflow-hidden border border-slate-700 shrink-0">
+                                      <img src={player.photoUrl} alt={player.name} className="h-full w-full object-cover" />
+                                    </div>
+                                    <div className="overflow-hidden">
+                                      <h4 className="text-xs font-bold truncate max-w-[140px]">{player.name}</h4>
+                                      <p className="text-[10px] text-slate-400">{player.teamName} • {player.position}</p>
+                                    </div>
+                                  </div>
+
+                                  {isMine ? (
+                                    <button 
+                                      onClick={() => handleSelectPlayer(player.apiId)}
+                                      className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/30 text-red-300 border border-red-500/40 hover:bg-red-600/50 transition-all duration-150 cursor-pointer"
+                                    >
+                                      Liberar
+                                    </button>
+                                  ) : isTakenByOther ? (
+                                    <span className="text-[9px] text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 truncate max-w-[90px]">
+                                      {player.draftedBy?.userName}
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleSelectPlayer(player.apiId)}
+                                      className="px-3 py-1 text-[10px] font-bold rounded-lg bg-white text-slate-950 hover:bg-slate-200 transition-all duration-150 shadow cursor-pointer"
+                                    >
+                                      Fichar
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+
+                      {/* Right side: Your Player Cards (Max 2, different selections) */}
+                      <div className="lg:col-span-5 flex flex-col gap-4">
+                        {/* Card 1 */}
+                        <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex items-center gap-4 bg-gradient-to-tr from-slate-950 via-slate-900/40 to-slate-950 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 h-24 w-24 bg-red-500/5 rounded-full blur-2xl" />
+                          {myMemberInfo?.selectedPlayerId ? (
+                            (() => {
+                              const myPlayer = players.find(p => p.apiId === myMemberInfo.selectedPlayerId);
+                              if (!myPlayer) return null;
+                              return (
+                                <div className="flex items-center justify-between w-full z-10 relative">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-red-500/50 shadow-md shrink-0">
+                                      <img src={myPlayer.photoUrl} alt={myPlayer.name} className="h-full w-full object-cover" />
+                                    </div>
+                                    <div>
+                                      <p className="text-[9px] font-semibold text-red-400 tracking-wide uppercase">{myPlayer.position} Exclusivo 1</p>
+                                      <h4 className="text-sm font-bold text-slate-100 truncate max-w-[150px]">{myPlayer.name}</h4>
+                                      <p className="text-xs text-slate-400">{myPlayer.teamName}</p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleSelectPlayer(myPlayer.apiId)}
+                                    className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/20 text-red-300 border border-red-500/30 hover:bg-red-555/30 transition-all cursor-pointer shrink-0"
+                                  >
+                                    Liberar
+                                  </button>
+                                </div>
+                              );
+                            })()
+                          ) : (
+                            <div className="flex items-center gap-3 py-2 text-left z-10 relative w-full">
+                              <div className="h-12 w-12 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-slate-650 shrink-0">
+                                <User className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-350">Jugador Exclusivo 1</h4>
+                                <p className="text-[10px] text-slate-500 leading-tight">Busca y ficha tu primer jugador.</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card 2 */}
+                        <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex items-center gap-4 bg-gradient-to-tr from-slate-950 via-slate-900/40 to-slate-950 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 h-24 w-24 bg-red-500/5 rounded-full blur-2xl" />
+                          {myMemberInfo?.selectedPlayer2Id ? (
+                            (() => {
+                              const myPlayer = players.find(p => p.apiId === myMemberInfo.selectedPlayer2Id);
+                              if (!myPlayer) return null;
+                              return (
+                                <div className="flex items-center justify-between w-full z-10 relative">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-red-500/50 shadow-md shrink-0">
+                                      <img src={myPlayer.photoUrl} alt={myPlayer.name} className="h-full w-full object-cover" />
+                                    </div>
+                                    <div>
+                                      <p className="text-[9px] font-semibold text-red-400 tracking-wide uppercase">{myPlayer.position} Exclusivo 2</p>
+                                      <h4 className="text-sm font-bold text-slate-100 truncate max-w-[150px]">{myPlayer.name}</h4>
+                                      <p className="text-xs text-slate-400">{myPlayer.teamName}</p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleSelectPlayer(myPlayer.apiId)}
+                                    className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/20 text-red-300 border border-red-500/30 hover:bg-red-555/30 transition-all cursor-pointer shrink-0"
+                                  >
+                                    Liberar
+                                  </button>
+                                </div>
+                              );
+                            })()
+                          ) : (
+                            <div className="flex items-center gap-3 py-2 text-left z-10 relative w-full">
+                              <div className="h-12 w-12 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-slate-650 shrink-0">
+                                <User className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-350">Jugador Exclusivo 2</h4>
+                                <p className="text-[10px] text-slate-500 leading-tight">Ficha un segundo jugador de otra selección.</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* SECCIÓN 3: PREDICCIÓN BOTA DE ORO */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-slate-200">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  3. Predicción Máximo Goleador (Bota de Oro)
-                </h3>
-                {myMemberInfo?.predictedTopScorerName && (
-                  <span className="text-xs bg-blue-950/20 text-blue-300 px-3 py-1 rounded-full border border-blue-500/30 font-semibold">
-                    Predicción: {myMemberInfo.predictedTopScorerName}
-                  </span>
-                )}
-              </div>
-
-              <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-950/40">
-                <div className="max-w-xl space-y-4">
-                  <p className="text-xs text-slate-400">
-                    A diferencia del draft, <strong className="text-slate-200">esta selección NO es exclusiva</strong>. Varios usuarios pueden elegir al mismo jugador. Se bloquea globalmente <strong>1 hora antes</strong> del partido inaugural del torneo. Acertar al final del Mundial otorga <strong className="text-emerald-400 font-bold">+10 puntos extra</strong>.
-                  </p>
-
-                  <div className="relative">
-                    <Search className="absolute left-4 top-3 h-4 w-4 text-slate-500" />
-                    <input 
-                      type="text"
-                      placeholder="Seleccionar Goleador..."
-                      value={selectedTopScorerQuery}
-                      onChange={(e) => {
-                        setSelectedTopScorerQuery(e.target.value);
-                        setShowTopScorerResults(true);
-                      }}
-                      onFocus={() => setShowTopScorerResults(true)}
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl py-2.5 pl-10 pr-4 text-slate-100 placeholder:text-slate-500 focus:outline-none text-xs"
-                    />
-
-                    {showTopScorerResults && (
-                      <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-30 max-h-48 overflow-y-auto">
-                        {(() => {
-                          const filtered = players.filter(p => {
-                            const query = selectedTopScorerQuery.toLowerCase().trim();
-                            if (!query) return true;
-                            if (p.name.toLowerCase().includes(query)) return true;
-                            if (p.teamName.toLowerCase().includes(query)) return true;
-                            const translations = COUNTRY_TRANSLATIONS[p.teamName] || [];
-                            if (translations.some(t => t.includes(query))) return true;
-                            return false;
-                          });
-
-                          if (filtered.length === 0) {
-                            return <p className="px-4 py-3 text-xs text-slate-500 italic">No se encontraron jugadores.</p>;
-                          }
-
-                          return filtered.map(player => (
-                            <button
-                              key={player.apiId}
-                              type="button"
-                              onClick={() => handleSelectTopScorer(player)}
-                              className="w-full px-4 py-2.5 hover:bg-slate-800 flex items-center justify-between text-left text-xs transition-colors duration-150 border-b border-slate-800/50"
-                            >
-                              <div>
-                                <p className="font-bold text-slate-200">{player.name}</p>
-                                <p className="text-[10px] text-slate-400">{player.teamName} • {player.position}</p>
-                              </div>
-                              <ChevronRight className="h-4 w-4 text-slate-500" />
-                            </button>
-                          ));
-                        })()}
-                      </div>
-                    )}
-                  </div>
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-slate-800/90 transition-all duration-300">
+              <div 
+                onClick={() => setIsDraftScorerOpen(!isDraftScorerOpen)}
+                className={`flex items-center justify-between cursor-pointer select-none group transition-all duration-300 ${
+                  isDraftScorerOpen ? 'border-b border-slate-800/40 pb-3' : 'pb-0'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`h-2.5 w-2.5 rounded-full bg-blue-500 shadow-md shadow-blue-500/50 transition-all duration-300 ${isDraftScorerOpen ? 'scale-110' : 'scale-75'}`} />
+                  <h3 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors duration-200">
+                    3. Predicción Máximo Goleador (Bota de Oro)
+                  </h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  {myMemberInfo?.predictedTopScorerName ? (
+                    <span className="text-xs bg-blue-500/10 text-blue-300 px-3 py-1 rounded-full border border-blue-500/20 font-semibold font-mono flex items-center gap-1.5 shadow-sm shadow-blue-500/5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+                      Predicción: {myMemberInfo.predictedTopScorerName}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/20 font-bold uppercase tracking-wider">
+                      Pendiente
+                    </span>
+                  )}
+                  <motion.div
+                    animate={{ rotate: isDraftScorerOpen ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChevronDown className="h-5 w-5 text-slate-400 group-hover:text-slate-200 transition-colors duration-200" />
+                  </motion.div>
                 </div>
               </div>
+
+              <AnimatePresence initial={false}>
+                {isDraftScorerOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                    animate={{ height: "auto", opacity: 1, marginTop: 20 }}
+                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-950/40">
+                      <div className="max-w-xl space-y-4">
+                        <p className="text-xs text-slate-400">
+                          A diferencia del draft, <strong className="text-slate-200">esta selección NO es exclusiva</strong>. Varios usuarios pueden elegir al mismo jugador. Se bloquea globalmente <strong>1 hora antes</strong> del partido inaugural del torneo. Acertar al final del Mundial otorga <strong className="text-emerald-400 font-bold">+10 puntos extra</strong>.
+                        </p>
+
+                        <div className="relative">
+                          <Search className="absolute left-4 top-3 h-4 w-4 text-slate-500" />
+                          <input 
+                            type="text"
+                            placeholder="Seleccionar Goleador..."
+                            value={selectedTopScorerQuery}
+                            onChange={(e) => {
+                              setSelectedTopScorerQuery(e.target.value);
+                              setShowTopScorerResults(true);
+                            }}
+                            onFocus={() => setShowTopScorerResults(true)}
+                            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl py-2.5 pl-10 pr-4 text-slate-100 placeholder:text-slate-500 focus:outline-none text-xs"
+                          />
+
+                          {showTopScorerResults && (
+                            <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-30 max-h-48 overflow-y-auto">
+                              {(() => {
+                                const filtered = players.filter(p => {
+                                  const query = selectedTopScorerQuery.toLowerCase().trim();
+                                  if (!query) return true;
+                                  if (p.name.toLowerCase().includes(query)) return true;
+                                  if (p.teamName.toLowerCase().includes(query)) return true;
+                                  const translations = COUNTRY_TRANSLATIONS[p.teamName] || [];
+                                  if (translations.some(t => t.includes(query))) return true;
+                                  return false;
+                                });
+
+                                if (filtered.length === 0) {
+                                  return <p className="px-4 py-3 text-xs text-slate-500 italic">No se encontraron jugadores.</p>;
+                                }
+
+                                return filtered.map(player => (
+                                  <button
+                                    key={player.apiId}
+                                    type="button"
+                                    onClick={() => handleSelectTopScorer(player)}
+                                    className="w-full px-4 py-2.5 hover:bg-slate-800 flex items-center justify-between text-left text-xs transition-colors duration-150 border-b border-slate-800/50"
+                                  >
+                                    <div>
+                                      <p className="font-bold text-slate-200">{player.name}</p>
+                                      <p className="text-[10px] text-slate-400">{player.teamName} • {player.position}</p>
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 text-slate-500" />
+                                  </button>
+                                ));
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* SECCIÓN 4: DRAFT DE SELECCIÓN GLORIOSA */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-slate-200">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  4. Selección Gloriosa (Floja)
-                </h3>
-                {myMemberInfo?.selectedWeakTeamName && (
-                  <span className="text-xs bg-blue-550/20 text-blue-450 px-3 py-1 rounded-full border border-blue-500/30 font-semibold">
-                    Tu Selección Gloriosa: {myMemberInfo.selectedWeakTeamName}
-                  </span>
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-slate-800/90 transition-all duration-300">
+              <div 
+                onClick={() => setIsDraftGloriousOpen(!isDraftGloriousOpen)}
+                className={`flex items-center justify-between cursor-pointer select-none group transition-all duration-300 ${
+                  isDraftGloriousOpen ? 'border-b border-slate-800/40 pb-3' : 'pb-0'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`h-2.5 w-2.5 rounded-full bg-blue-500 shadow-md shadow-blue-500/50 transition-all duration-300 ${isDraftGloriousOpen ? 'scale-110' : 'scale-75'}`} />
+                  <h3 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors duration-200">
+                    4. Selección Gloriosa (Floja)
+                  </h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  {myMemberInfo?.selectedWeakTeamName ? (
+                    <span className="text-xs bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20 font-semibold font-mono flex items-center gap-1.5 shadow-sm shadow-blue-500/5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+                      Tu Selección Gloriosa: {myMemberInfo.selectedWeakTeamName}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/20 font-bold uppercase tracking-wider">
+                      Pendiente
+                    </span>
+                  )}
+                  <motion.div
+                    animate={{ rotate: isDraftGloriousOpen ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChevronDown className="h-5 w-5 text-slate-400 group-hover:text-slate-200 transition-colors duration-200" />
+                  </motion.div>
+                </div>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {isDraftGloriousOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                    animate={{ height: "auto", opacity: 1, marginTop: 20 }}
+                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <p className="text-xs text-slate-450 max-w-2xl leading-relaxed mb-4">
+                      Elige una de las 10 selecciones más débiles del Mundial. Cada victoria real de este equipo sumará <strong className="text-emerald-450 font-bold">+3 puntos</strong> directos a tu quiniela. Fichaje exclusivo por grupo.
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                      {(() => {
+                        const WEAK_TEAMS_IDS = [2386, 5530, 4673, 1548, 1567, 1533, 1569, 23, 1568, 1531];
+                        const weakTeams = teams.filter(t => WEAK_TEAMS_IDS.includes(t.apiId));
+                        
+                        return weakTeams.map(team => {
+                          const isTaken = team.gloriousDraftedBy !== null;
+                          const isMine = team.gloriousDraftedBy?.userId === currentUser.id;
+                          const isTakenByOther = isTaken && !isMine;
+
+                          return (
+                            <button
+                              key={team.apiId}
+                              disabled={isTakenByOther}
+                              onClick={() => handleSelectWeakTeam(team.apiId)}
+                              className={`glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-3 transition-all duration-200 ${
+                                isMine 
+                                  ? 'border-2 border-blue-500 bg-gradient-to-b from-blue-950/10 to-slate-900/60 ring-2 ring-blue-500/20' 
+                                  : isTakenByOther 
+                                    ? 'opacity-40 grayscale cursor-not-allowed border-slate-850' 
+                                    : 'hover:border-slate-650 hover:bg-slate-800/40 hover:-translate-y-1 cursor-pointer'
+                              }`}
+                            >
+                              <img 
+                                src={team.flagUrl} 
+                                alt={team.name} 
+                                className="h-10 w-16 object-cover rounded shadow-md border border-slate-800"
+                              />
+                              <div className="text-center">
+                                <p className="text-xs font-bold text-slate-200 truncate max-w-[120px]">{team.name}</p>
+                                {isMine && <p className="text-[10px] text-blue-400 font-semibold mt-1">Tuya</p>}
+                                {isTakenByOther && (
+                                  <p className="text-[9px] text-red-400 font-semibold mt-1 truncate max-w-[110px]">
+                                    Por {team.gloriousDraftedBy?.userName}
+                                  </p>
+                                )}
+                                {!isTaken && <p className="text-[10px] text-slate-500 mt-1">Disponible</p>}
+                              </div>
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </motion.div>
                 )}
-              </div>
-
-              <p className="text-xs text-slate-450 max-w-2xl leading-relaxed">
-                Elige una de las 10 selecciones más débiles del Mundial. Cada victoria real de este equipo sumará <strong className="text-emerald-450 font-bold">+3 puntos</strong> directos a tu quiniela. Fichaje exclusivo por grupo.
-              </p>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {(() => {
-                  const WEAK_TEAMS_IDS = [2386, 5530, 4673, 1548, 1567, 1533, 1569, 23, 1568, 1531];
-                  const weakTeams = teams.filter(t => WEAK_TEAMS_IDS.includes(t.apiId));
-                  
-                  return weakTeams.map(team => {
-                    const isTaken = team.gloriousDraftedBy !== null;
-                    const isMine = team.gloriousDraftedBy?.userId === currentUser.id;
-                    const isTakenByOther = isTaken && !isMine;
-
-                    return (
-                      <button
-                        key={team.apiId}
-                        disabled={isTakenByOther}
-                        onClick={() => handleSelectWeakTeam(team.apiId)}
-                        className={`glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-3 transition-all duration-200 ${
-                          isMine 
-                            ? 'border-2 border-blue-500 bg-gradient-to-b from-blue-950/10 to-slate-900/60 ring-2 ring-blue-500/20' 
-                            : isTakenByOther 
-                              ? 'opacity-40 grayscale cursor-not-allowed border-slate-850' 
-                              : 'hover:border-slate-650 hover:bg-slate-800/40 hover:-translate-y-1 cursor-pointer'
-                        }`}
-                      >
-                        <img 
-                          src={team.flagUrl} 
-                          alt={team.name} 
-                          className="h-10 w-16 object-cover rounded shadow-md border border-slate-800"
-                        />
-                        <div className="text-center">
-                          <p className="text-xs font-bold text-slate-200 truncate max-w-[120px]">{team.name}</p>
-                          {isMine && <p className="text-[10px] text-blue-400 font-semibold mt-1">Tuya</p>}
-                          {isTakenByOther && (
-                            <p className="text-[9px] text-red-400 font-semibold mt-1 truncate max-w-[110px]">
-                              Por {team.gloriousDraftedBy?.userName}
-                            </p>
-                          )}
-                          {!isTaken && <p className="text-[10px] text-slate-500 mt-1">Disponible</p>}
-                        </div>
-                      </button>
-                    );
-                  });
-                })()}
-              </div>
+              </AnimatePresence>
             </div>
 
           </section>
