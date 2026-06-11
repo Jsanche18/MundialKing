@@ -138,10 +138,10 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
   const [playerSearchQuery, setPlayerSearchQuery] = useState('');
   const [selectedTopScorerQuery, setSelectedTopScorerQuery] = useState('');
   const [showTopScorerResults, setShowTopScorerResults] = useState(false);
-  const [isDraftTeamOpen, setIsDraftTeamOpen] = useState(true);
-  const [isDraftPlayersOpen, setIsDraftPlayersOpen] = useState(true);
-  const [isDraftScorerOpen, setIsDraftScorerOpen] = useState(true);
-  const [isDraftGloriousOpen, setIsDraftGloriousOpen] = useState(true);
+  const [isDraftTeamOpen, setIsDraftTeamOpen] = useState(false);
+  const [isDraftPlayersOpen, setIsDraftPlayersOpen] = useState(false);
+  const [isDraftScorerOpen, setIsDraftScorerOpen] = useState(false);
+  const [isDraftGloriousOpen, setIsDraftGloriousOpen] = useState(false);
 
   // Matches section filtering states
   const [matchesPhaseFilter, setMatchesPhaseFilter] = useState<'groups' | 'knockout'>('groups');
@@ -1866,12 +1866,55 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
 
         {/* TAB: DRAFT */}
         {activeTab === 'draft' && (
-          <section className="flex-1 flex flex-col gap-8">
+          <section className="flex-1 flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <h2 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight">Sala del Draft Exclusivo</h2>
               <p className="text-slate-400 text-sm">
-                Fichajes únicos por grupo. El equipo y jugador que selecciones serán <strong className="text-red-400">sólo tuyos</strong> en tu liga de amigos.
+                Fichajes únicos por grupo. Lo que elijas será <strong className="text-red-400">exclusivamente tuyo</strong> en tu liga de amigos. ¡Elige bien!
               </p>
+            </div>
+
+            {/* Guía Explicativa del Draft */}
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800 bg-slate-950/20 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex gap-3 items-start">
+                <div className="h-7 w-7 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shrink-0 font-bold text-xs">1</div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-200">Equipo Exclusivo</h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Bloquea una selección para tu plantilla. Nadie más de tu grupo podrá elegirla. Te dará **+1 punto extra** por cada ronda que avance en el Mundial.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 items-start">
+                <div className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/25 flex items-center justify-center text-red-400 shrink-0 font-bold text-xs">2</div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-200">Jugadores Estrella</h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Ficha hasta 2 jugadores de selecciones distintas. Sumarás **+1 punto** por cada gol o asistencia real que marquen.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 items-start border-t border-slate-850 pt-3 md:border-t-0 md:pt-0">
+                <div className="h-7 w-7 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shrink-0 font-bold text-xs">3</div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-200">Selección Gloriosa</h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Ficha una selección de bajo ranking. Ganarás **+3 puntos** adicionales cada vez que consiga una victoria en sus partidos reales.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 items-start border-t border-slate-850 pt-3 md:border-t-0 md:pt-0">
+                <div className="h-7 w-7 rounded-lg bg-blue-500/10 border border-blue-500/25 flex items-center justify-center text-blue-400 shrink-0 font-bold text-xs">4</div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-200">Bota de Oro</h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Elige al jugador que creas que será el máximo goleador. Si aciertas tu predicción, sumas **+10 puntos** al final del Mundial.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* SECCIÓN 1: DRAFT DE EQUIPO */}
