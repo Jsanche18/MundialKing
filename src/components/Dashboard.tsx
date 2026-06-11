@@ -108,8 +108,21 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
   const [selectedTopScorerQuery, setSelectedTopScorerQuery] = useState('');
   const [showTopScorerResults, setShowTopScorerResults] = useState(false);
 
-  // Time-lock checking (current simulated local time: 2026-06-10T08:12:28Z)
-  const simulatedNow = new Date("2026-06-10T08:12:28Z").getTime();
+  // Matches section filtering states
+  const [matchesPhaseFilter, setMatchesPhaseFilter] = useState<'groups' | 'knockout'>('groups');
+  const [matchesGroupFilter, setMatchesGroupFilter] = useState<string>('all');
+  const [matchesPredictionFilter, setMatchesPredictionFilter] = useState<'all' | 'pending' | 'completed' | 'live'>('all');
+  const [matchesSearchQuery, setMatchesSearchQuery] = useState<string>('');
+
+  // Real-time simulated/actual time state
+  const [simulatedNow, setSimulatedNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSimulatedNow(Date.now());
+    }, 30000); // Actualiza cada 30 segundos
+    return () => clearInterval(timer);
+  }, []);
 
   // SWR for live matches polling every 10 seconds (Layer 2 - Polling Interno de Coste Cero)
   const { data: swrMatches } = useSWR(
@@ -229,6 +242,12 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       setLoading(false);
     }
   };
+
+  // Helper to verify if all group stage matches are finished (apiId <= 2026072)
+  const allGroupStageFinished = useMemo(() => {
+    const groupMatches = matches.filter(m => m.apiId >= 2026001 && m.apiId <= 2026072);
+    return groupMatches.length > 0 && groupMatches.every(m => m.status === 'FT');
+  }, [matches]);
 
   // Helper to check if a match is locked (kickoff time <= 60 minutes from simulated now)
   const isMatchLocked = (kickoffStr: string, status: string) => {
@@ -837,30 +856,208 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
               </div>
             </div>
 
-            {/* Matches Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-4">
-              {matches.map(match => {
-                const locked = isMatchLocked(match.kickoffTimestamp, match.status);
-                const timeStatus = getMatchTimeStatus(match.kickoffTimestamp, match.status);
-                const isLive = match.status === 'LIVE';
+            {/* Filtering Toolbar */}
+            <div className="glass-panel p-4 rounded-2xl border border-slate-800/80 bg-slate-900/10 flex flex-col gap-4 mt-2">
+              {/* Phase Selector tabs */}
+              <div className="flex items-center gap-2 border-b border-slate-800/60 pb-3">
+                <button
+                  onClick={() => {
+                    setMatchesPhaseFilter('groups');
+                    setMatchesGroupFilter('all');
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    matchesPhaseFilter === 'groups'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Fase de Grupos
+                </button>
+                <button
+                  disabled={!allGroupStageFinished}
+                  onClick={() => {
+                    setMatchesPhaseFilter('knockout');
+                    setMatchesGroupFilter('all');
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    !allGroupStageFinished
+                      ? 'opacity-40 cursor-not-allowed text-slate-550'
+                      : matchesPhaseFilter === 'knockout'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title={!allGroupStageFinished ? "Se desbloqueará al terminar la fase de grupos" : ""}
+                >
+                  {!allGroupStageFinished && <Lock className="h-3.5 w-3.5" />}
+                  Fase Final (Eliminatorias)
+                </button>
+              </div>
 
-                return (
-                  <MatchCard 
-                    key={match.apiId} 
-                    match={match} 
-                    locked={locked} 
-                    timeStatus={timeStatus} 
-                    isLive={isLive}
-                    onSavePrediction={handleSavePrediction}
+              {/* Filters grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Buscar selección..."
+                    value={matchesSearchQuery}
+                    onChange={(e) => setMatchesSearchQuery(e.target.value)}
+                    className="w-full bg-slate-955 border border-slate-800 focus:border-mexico-green rounded-xl py-2 pl-10 pr-4 text-slate-200 placeholder:text-slate-600 focus:outline-none text-xs transition-all duration-200"
                   />
-                );
-              })}
-              {matches.length === 0 && (
-                <div className="col-span-full text-center py-12 text-slate-500 italic">
-                  No se encontraron partidos. Lanza el cron de sincronización para cargarlos.
                 </div>
-              )}
+
+                {/* Prediction Status Filter */}
+                <select
+                  value={matchesPredictionFilter}
+                  onChange={(e) => setMatchesPredictionFilter(e.target.value as any)}
+                  className="bg-slate-955 border border-slate-800 focus:border-mexico-green rounded-xl py-2.5 px-3.5 text-xs text-slate-300 focus:outline-none cursor-pointer"
+                >
+                  <option value="all">Todos los partidos</option>
+                  <option value="pending">Pendientes de pronóstico</option>
+                  <option value="live">Partidos en Vivo</option>
+                  <option value="completed">Partidos Finalizados</option>
+                </select>
+
+                {/* Group Filter (Only if Phase is Groups) */}
+                {matchesPhaseFilter === 'groups' ? (
+                  <select
+                    value={matchesGroupFilter}
+                    onChange={(e) => setMatchesGroupFilter(e.target.value)}
+                    className="bg-slate-955 border border-slate-800 focus:border-mexico-green rounded-xl py-2.5 px-3.5 text-xs text-slate-300 focus:outline-none cursor-pointer"
+                  >
+                    <option value="all">Todos los grupos (A-L)</option>
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map(g => (
+                      <option key={g} value={g}>Grupo {g}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="bg-slate-955/20 border border-slate-800/40 rounded-xl py-2.5 px-3.5 text-xs text-slate-500 flex items-center justify-center font-medium select-none">
+                    Fase Final (Sin grupos)
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Matches Grouped List */}
+            {(() => {
+              const matchesTeamName = (teamName: string, query: string) => {
+                const q = query.toLowerCase().trim();
+                if (!q) return true;
+                if (teamName.toLowerCase().includes(q)) return true;
+                const translations = COUNTRY_TRANSLATIONS[teamName] || [];
+                return translations.some(t => t.toLowerCase().includes(q));
+              };
+
+              const filteredMatches = matches.filter(match => {
+                const isKnockout = match.apiId >= 2026073;
+                
+                // Hide knockout stages from the main view entirely unless the group stage is completed
+                if (isKnockout && !allGroupStageFinished) {
+                  return false;
+                }
+
+                if (matchesPhaseFilter === 'groups' && isKnockout) return false;
+                if (matchesPhaseFilter === 'knockout' && !isKnockout) return false;
+
+                if (matchesPhaseFilter === 'groups' && matchesGroupFilter !== 'all') {
+                  const groupIdx = matchesGroupFilter.charCodeAt(0) - 65;
+                  const minId = 2026001 + groupIdx * 6;
+                  const maxId = 2026006 + groupIdx * 6;
+                  if (match.apiId < minId || match.apiId > maxId) return false;
+                }
+
+                if (matchesPredictionFilter === 'pending') {
+                  const locked = isMatchLocked(match.kickoffTimestamp, match.status);
+                  if (match.userPrediction !== null || locked) return false;
+                } else if (matchesPredictionFilter === 'completed') {
+                  if (match.status !== 'FT') return false;
+                } else if (matchesPredictionFilter === 'live') {
+                  if (match.status !== 'LIVE') return false;
+                }
+
+                if (matchesSearchQuery.trim() !== '') {
+                  const homeMatch = matchesTeamName(match.homeTeam.name, matchesSearchQuery);
+                  const awayMatch = matchesTeamName(match.awayTeam.name, matchesSearchQuery);
+                  if (!homeMatch && !awayMatch) return false;
+                }
+
+                return true;
+              });
+
+              const groupedMatches: { [dateKey: string]: any[] } = {};
+              filteredMatches.forEach(match => {
+                const dateObj = new Date(match.kickoffTimestamp);
+                const dateKey = new Intl.DateTimeFormat('es-ES', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                }).format(dateObj);
+                
+                const capitalizedKey = dateKey.charAt(0).toUpperCase() + dateKey.slice(1);
+                if (!groupedMatches[capitalizedKey]) {
+                  groupedMatches[capitalizedKey] = [];
+                }
+                groupedMatches[capitalizedKey].push(match);
+              });
+
+              const sortedDateKeys = Object.keys(groupedMatches).sort((a, b) => {
+                const dateA = new Date(groupedMatches[a][0].kickoffTimestamp).getTime();
+                const dateB = new Date(groupedMatches[b][0].kickoffTimestamp).getTime();
+                return dateA - dateB;
+              });
+
+              if (sortedDateKeys.length === 0) {
+                return (
+                  <div className="text-center py-12 text-slate-500 italic border border-dashed border-slate-800 rounded-2xl bg-slate-900/5 mt-4">
+                    {matches.length === 0 
+                      ? "No se encontraron partidos. Lanza el cron de sincronización para cargarlos." 
+                      : "No se encontraron partidos para los filtros seleccionados."}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-8 mt-4">
+                  {sortedDateKeys.map(dateKey => {
+                    const dayMatches = groupedMatches[dateKey];
+                    return (
+                      <div key={dateKey} className="space-y-3">
+                        <div className="flex items-center gap-2 border-b border-slate-800/40 pb-2">
+                          <Calendar className="h-4 w-4 text-emerald-450" />
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                            {dateKey}
+                          </h3>
+                          <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700/60 font-semibold font-mono">
+                            {dayMatches.length} {dayMatches.length === 1 ? 'partido' : 'partidos'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                          {dayMatches.map(match => {
+                            const locked = isMatchLocked(match.kickoffTimestamp, match.status);
+                            const timeStatus = getMatchTimeStatus(match.kickoffTimestamp, match.status);
+                            const isLive = match.status === 'LIVE';
+
+                            return (
+                              <MatchCard 
+                                key={match.apiId} 
+                                match={match} 
+                                locked={locked} 
+                                timeStatus={timeStatus} 
+                                isLive={isLive}
+                                onSavePrediction={handleSavePrediction}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </section>
         )}
 
