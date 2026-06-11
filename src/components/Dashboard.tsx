@@ -727,11 +727,21 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       });
       
       groupMatches.forEach(m => {
-        const score = simulatedScores[m.apiId];
-        if (score && score.homeGoals !== null && score.awayGoals !== null) {
-          const hg = score.homeGoals;
-          const ag = score.awayGoals;
-          
+        let hg: number | null = null;
+        let ag: number | null = null;
+
+        if (m.status === 'FT' || m.status === 'LIVE') {
+          hg = m.homeGoals;
+          ag = m.awayGoals;
+        } else {
+          const score = simulatedScores[m.apiId];
+          if (score && score.homeGoals !== null && score.awayGoals !== null) {
+            hg = score.homeGoals;
+            ag = score.awayGoals;
+          }
+        }
+
+        if (hg !== null && ag !== null) {
           const homeRow = teamRows.find(r => r.teamName === m.homeTeam.name);
           const awayRow = teamRows.find(r => r.teamName === m.awayTeam.name);
           
@@ -912,13 +922,23 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       const awayTeam = resolveTeam(prevMatch.awayTeam.name);
       if (!homeTeam || !awayTeam) return null;
       
-      const simScore = simulatedScores[prevMatchId];
-      if (!simScore || simScore.homeGoals === null || simScore.awayGoals === null) {
+      let hg: number | null = null;
+      let ag: number | null = null;
+
+      if (prevMatch.status === 'FT' || prevMatch.status === 'LIVE') {
+        hg = prevMatch.homeGoals;
+        ag = prevMatch.awayGoals;
+      } else {
+        const simScore = simulatedScores[prevMatchId];
+        if (simScore && simScore.homeGoals !== null && simScore.awayGoals !== null) {
+          hg = simScore.homeGoals;
+          ag = simScore.awayGoals;
+        }
+      }
+
+      if (hg === null || ag === null) {
         return null;
       }
-      
-      const hg = simScore.homeGoals;
-      const ag = simScore.awayGoals;
       
       if (hg > ag) {
         return name.startsWith('W') ? homeTeam : awayTeam;
@@ -2566,9 +2586,9 @@ function BracketMatchCard({
   const homeTeam = resolveTeam(match.homeTeam.name);
   const awayTeam = resolveTeam(match.awayTeam.name);
   
-  const score = simulatedScores[match.apiId] || { homeGoals: null, awayGoals: null };
-  const hg = score.homeGoals;
-  const ag = score.awayGoals;
+  const isRealScore = match.status === 'FT' || match.status === 'LIVE';
+  const hg = isRealScore ? match.homeGoals : (simulatedScores[match.apiId]?.homeGoals ?? null);
+  const ag = isRealScore ? match.awayGoals : (simulatedScores[match.apiId]?.awayGoals ?? null);
   const chosenWinnerId = knockoutDrawWinners[match.apiId];
 
   return (
@@ -2594,7 +2614,7 @@ function BracketMatchCard({
             )}
           </div>
           <select
-            disabled={!homeTeam || !awayTeam}
+            disabled={!homeTeam || !awayTeam || isRealScore}
             value={hg !== null ? String(hg) : ''}
             onChange={(e) => updateSimulatedScore(match.apiId, 'home', e.target.value)}
             className="w-8 h-8 text-center bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2.5 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
@@ -2624,7 +2644,7 @@ function BracketMatchCard({
             )}
           </div>
           <select
-            disabled={!homeTeam || !awayTeam}
+            disabled={!homeTeam || !awayTeam || isRealScore}
             value={ag !== null ? String(ag) : ''}
             onChange={(e) => updateSimulatedScore(match.apiId, 'away', e.target.value)}
             className="w-8 h-8 text-center bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2.5 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
