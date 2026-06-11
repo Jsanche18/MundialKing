@@ -1904,7 +1904,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
             </div>
 
             {/* SECCIÓN 3: PREDICCIÓN BOTA DE ORO */}
-            <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-slate-800/90 transition-all duration-300">
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-slate-800/90 transition-all duration-300 relative z-20">
               <div 
                 onClick={() => setIsDraftScorerOpen(!isDraftScorerOpen)}
                 className={`flex items-center justify-between cursor-pointer select-none group transition-all duration-300 ${
