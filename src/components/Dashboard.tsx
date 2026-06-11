@@ -346,6 +346,10 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       ]);
 
       if (!matchesRes.ok || !teamsRes.ok || !playersRes.ok || !standingsRes.ok || !groupsRes.ok) {
+        if (groupsRes.status === 401 || matchesRes.status === 401) {
+          onLogout();
+          return;
+        }
         throw new Error("Error al cargar uno de los módulos.");
       }
 

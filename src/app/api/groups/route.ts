@@ -21,6 +21,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    // Verificar si el usuario existe en la base de datos
+    const userExists = await db.user.findUnique({
+      where: { id: userId }
+    });
+    if (!userExists) {
+      return NextResponse.json({ error: "Usuario no encontrado en la base de datos" }, { status: 401 });
+    }
+
     // Buscar todas las membresías del usuario e incluir los grupos correspondientes
     const memberships = await db.groupMember.findMany({
       where: { userId },
