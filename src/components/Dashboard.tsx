@@ -1180,10 +1180,10 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
             <select
               value={groupId}
               onChange={(e) => onGroupIdChange?.(e.target.value)}
-              className="bg-slate-955 border border-slate-800 focus:border-mexico-green rounded-lg py-1.5 px-2 text-xs text-slate-250 focus:outline-none cursor-pointer flex-1 text-right"
+              className="bg-slate-900 border border-slate-800 focus:border-mexico-green rounded-lg py-1.5 px-2 text-xs text-slate-250 focus:outline-none cursor-pointer flex-1 text-right"
             >
               {userGroups.map(g => (
-                <option key={g.id} value={g.id} className="bg-slate-955 text-slate-200">
+                <option key={g.id} value={g.id} className="bg-slate-900 text-slate-200">
                   {g.name}
                 </option>
               ))}
@@ -1279,7 +1279,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                     placeholder="Buscar selección..."
                     value={matchesSearchQuery}
                     onChange={(e) => setMatchesSearchQuery(e.target.value)}
-                    className="w-full bg-slate-955 border border-slate-800 focus:border-mexico-green rounded-xl py-2 pl-10 pr-4 text-slate-200 placeholder:text-slate-600 focus:outline-none text-xs transition-all duration-200"
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-mexico-green rounded-xl py-2 pl-10 pr-4 text-slate-250 placeholder:text-slate-500 focus:outline-none text-xs transition-all duration-200"
                   />
                 </div>
 
@@ -1287,7 +1287,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                 <select
                   value={matchesPredictionFilter}
                   onChange={(e) => setMatchesPredictionFilter(e.target.value as any)}
-                  className="bg-slate-955 border border-slate-800 focus:border-mexico-green rounded-xl py-2.5 px-3.5 text-xs text-slate-300 focus:outline-none cursor-pointer"
+                  className="bg-slate-900 border border-slate-800 focus:border-mexico-green rounded-xl py-2.5 px-3.5 text-xs text-slate-300 focus:outline-none cursor-pointer"
                 >
                   <option value="all">Todos los partidos</option>
                   <option value="pending">Pendientes de pronóstico</option>
@@ -1300,7 +1300,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                   <select
                     value={matchesGroupFilter}
                     onChange={(e) => setMatchesGroupFilter(e.target.value)}
-                    className="bg-slate-955 border border-slate-800 focus:border-mexico-green rounded-xl py-2.5 px-3.5 text-xs text-slate-300 focus:outline-none cursor-pointer"
+                    className="bg-slate-900 border border-slate-800 focus:border-mexico-green rounded-xl py-2.5 px-3.5 text-xs text-slate-300 focus:outline-none cursor-pointer"
                   >
                     <option value="all">Todos los grupos (A-L)</option>
                     {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map(g => (
@@ -1308,7 +1308,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                     ))}
                   </select>
                 ) : (
-                  <div className="bg-slate-955/20 border border-slate-800/40 rounded-xl py-2.5 px-3.5 text-xs text-slate-500 flex items-center justify-center font-medium select-none">
+                  <div className="bg-slate-900/20 border border-slate-800/40 rounded-xl py-2.5 px-3.5 text-xs text-slate-500 flex items-center justify-center font-medium select-none font-semibold">
                     Fase Final (Sin grupos)
                   </div>
                 )}
@@ -2170,7 +2170,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                           className={`p-3.5 rounded-xl border transition-all flex flex-col items-center justify-between text-center gap-2 h-[100px] hover:scale-[1.02] active:scale-[0.98] ${
                             isSelected
                               ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-md shadow-emerald-500/5'
-                              : 'bg-slate-955/40 border-slate-800 text-slate-400 hover:border-slate-700/60'
+                              : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700/60'
                           }`}
                         >
                           <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
@@ -2190,7 +2190,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                 <div className="flex justify-end mt-4">
                   <button
                     onClick={handleConfirmQualifiers}
-                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-955 font-extrabold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/15"
+                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/15"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     <span>Generar y Desbloquear Bracket</span>
@@ -2325,7 +2325,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                           <Trophy className="h-4 w-4" />
                           <span>Gran Final</span>
                         </h3>
-                        <div className="mt-4 bg-gradient-to-tr from-slate-955 via-slate-900/60 to-slate-955 p-2.5 rounded-2xl border-2 border-amber-500/20 shadow-xl shadow-amber-500/5">
+                        <div className="mt-4 bg-gradient-to-tr from-slate-950 via-slate-900/60 to-slate-950 p-2.5 rounded-2xl border-2 border-amber-500/20 shadow-xl shadow-amber-500/5">
                           {matches.filter(m => m.apiId === 2026104).map(m => (
                             <BracketMatchCard
                               key={m.apiId}
@@ -2369,7 +2369,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       </main>
 
       {/* Bottom Navigation for Mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-955/90 backdrop-blur-lg border-t border-slate-850 z-40 flex items-center justify-around py-3 px-4 shadow-black/80 shadow-2xl">
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-lg border-t border-slate-850 z-40 flex items-center justify-around py-3 px-4 shadow-black/80 shadow-2xl">
         <button
           onClick={() => setActiveTab('matches')}
           className={`flex flex-col items-center gap-1 text-center transition-all ${
@@ -2602,7 +2602,7 @@ function BracketMatchCard({
           >
             <option value="" className="text-slate-500">-</option>
             {Array.from({ length: 21 }, (_, i) => (
-              <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
+              <option key={i} value={String(i)} className="bg-slate-900 text-slate-100">
                 {i}
               </option>
             ))}
@@ -2632,7 +2632,7 @@ function BracketMatchCard({
           >
             <option value="" className="text-slate-500">-</option>
             {Array.from({ length: 21 }, (_, i) => (
-              <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
+              <option key={i} value={String(i)} className="bg-slate-900 text-slate-100">
                 {i}
               </option>
             ))}
