@@ -24,6 +24,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "El usuario no pertenece a este grupo" }, { status: 404 });
     }
 
+    // ─── Bloqueo global: 15 minutos antes del primer partido ───────────────────
+    const firstMatch = await db.match.findFirst({
+      orderBy: { kickoffTimestamp: "asc" }
+    });
+
+    if (firstMatch) {
+      const now = new Date().getTime();
+      const firstKickoff = new Date(firstMatch.kickoffTimestamp).getTime();
+      const diffMins = (firstKickoff - now) / (1000 * 60);
+
+      if (diffMins <= 15) {
+        return NextResponse.json(
+          { error: "El draft está cerrado: faltan menos de 15 minutos para el inicio del Mundial." },
+          { status: 403 }
+        );
+      }
+    }
+    // ───────────────────────────────────────────────────────────────────────────
+
     if (type === "team") {
       try {
         await db.$transaction(async (tx) => {
@@ -188,23 +207,6 @@ export async function POST(req: Request) {
     }
 
     if (type === "topScorer") {
-      const firstMatch = await db.match.findFirst({
-        orderBy: { kickoffTimestamp: "asc" }
-      });
-
-      if (firstMatch) {
-        const now = new Date().getTime();
-        const firstKickoff = new Date(firstMatch.kickoffTimestamp).getTime();
-        const diffMins = (firstKickoff - now) / (1000 * 60);
-
-        if (diffMins <= 60) {
-          return NextResponse.json(
-            { error: "Predicción de Bota de Oro bloqueada: El torneo inicia en menos de 1 hora." },
-            { status: 403 }
-          );
-        }
-      }
-
       await db.groupMember.update({
         where: { userId_groupId: { userId, groupId } },
         data: {
@@ -221,3 +223,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Error interno del servidor", details: error.message }, { status: 500 });
   }
 }
+
