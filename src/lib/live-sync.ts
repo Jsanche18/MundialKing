@@ -85,13 +85,90 @@ export async function syncLiveMatches(forceRun = false, simulateRun = false) {
     liveFixtures = data.response || [];
   }
 
+  // Inject simulated World Cup 2026 matches that are currently in progress or finished
+  for (const dbMatch of activeMatchesInDb) {
+    const isWc2026Match = dbMatch.apiId >= 2026001 && dbMatch.apiId <= 2026104;
+    if (isWc2026Match) {
+      const alreadyAdded = liveFixtures.some((f: any) => f.fixture.id === dbMatch.apiId);
+      if (!alreadyAdded) {
+        const elapsedMins = Math.floor((now.getTime() - dbMatch.kickoffTimestamp.getTime()) / (1000 * 60));
+        if (elapsedMins >= 0) {
+          const homeFinal = (dbMatch.apiId * 7) % 4; // 0, 1, 2, 3
+          const awayFinal = (dbMatch.apiId * 13) % 3; // 0, 1, 2
+          
+          let status = 'LIVE';
+          let homeGoals = 0;
+          let awayGoals = 0;
+          
+          if (elapsedMins >= 105) {
+            status = 'FT';
+            homeGoals = homeFinal;
+            awayGoals = awayFinal;
+          } else {
+            status = 'LIVE';
+            const progressPercent = Math.min(elapsedMins / 90, 1);
+            homeGoals = Math.floor(homeFinal * progressPercent);
+            awayGoals = Math.floor(awayFinal * progressPercent);
+          }
+          
+          const events: any[] = [];
+          const homePlayers = await db.player.findMany({ where: { teamId: dbMatch.homeTeamId } });
+          const awayPlayers = await db.player.findMany({ where: { teamId: dbMatch.awayTeamId } });
+          
+          for (let i = 0; i < homeGoals; i++) {
+            if (homePlayers.length > 0) {
+              const playerIdx = (dbMatch.apiId + i) % homePlayers.length;
+              const scorer = homePlayers[playerIdx];
+              const assistIdx = (dbMatch.apiId + i + 1) % homePlayers.length;
+              const assister = assistIdx !== playerIdx ? homePlayers[assistIdx] : null;
+              events.push({
+                type: 'Goal',
+                player: { id: scorer.apiId, name: scorer.name },
+                assist: assister ? { id: assister.apiId, name: assister.name } : null
+              });
+            }
+          }
+          
+          for (let i = 0; i < awayGoals; i++) {
+            if (awayPlayers.length > 0) {
+              const playerIdx = (dbMatch.apiId + i + 5) % awayPlayers.length;
+              const scorer = awayPlayers[playerIdx];
+              const assistIdx = (dbMatch.apiId + i + 6) % awayPlayers.length;
+              const assister = assistIdx !== playerIdx ? awayPlayers[assistIdx] : null;
+              events.push({
+                type: 'Goal',
+                player: { id: scorer.apiId, name: scorer.name },
+                assist: assister ? { id: assister.apiId, name: assister.name } : null
+              });
+            }
+          }
+          
+          liveFixtures.push({
+            fixture: {
+              id: dbMatch.apiId,
+              status: { short: status }
+            },
+            goals: {
+              home: homeGoals,
+              away: awayGoals
+            },
+            events: events
+          });
+          console.log(`Smart Cron Simulator: Injected simulated match ${dbMatch.apiId} (${status}, Score: ${homeGoals}-${awayGoals}, Elapsed: ${elapsedMins} mins)`);
+        }
+      }
+    }
+  }
+
   let processedCount = 0;
   let finishedMatchesCount = 0;
 
   // Iterar por cada partido en vivo de la respuesta
   for (const fixtureInfo of liveFixtures) {
     const matchId = fixtureInfo.fixture.id;
-    const apiStatus = fixtureInfo.fixture.status.short;
+    const rawStatus = fixtureInfo.fixture.status.short;
+    const liveStatuses = ["1H", "2H", "HT", "ET", "P", "LIVE"];
+    const apiStatus = liveStatuses.includes(rawStatus) ? "LIVE" : rawStatus;
     const homeGoals = fixtureInfo.goals.home;
     const awayGoals = fixtureInfo.goals.away;
 
@@ -127,7 +204,8 @@ export async function syncLiveMatches(forceRun = false, simulateRun = false) {
       }
 
       let events: any[] = [];
-      if (isSimulation) {
+      const isSimulatedMatch = matchId >= 2026001 && matchId <= 2026104;
+      if (isSimulation || isSimulatedMatch) {
         events = fixtureInfo.events || [];
       } else {
         // Consultar eventos del partido directamente a API-Football
