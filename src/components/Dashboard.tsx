@@ -17,7 +17,10 @@ import {
   ChevronRight,
   UserCheck,
   Activity,
-  RotateCcw
+  RotateCcw,
+  Award,
+  Edit2,
+  CheckCircle2
 } from 'lucide-react';
 import useSWR from 'swr';
 import { motion } from 'framer-motion';
@@ -98,7 +101,22 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
   // Simulation States
   const [simulatedScores, setSimulatedScores] = useState<{ [matchId: number]: { homeGoals: number | null; awayGoals: number | null } }>({});
   const [knockoutDrawWinners, setKnockoutDrawWinners] = useState<{ [matchId: number]: number }>({});
-  const [simActiveSubTab, setSimActiveSubTab] = useState<'groups' | 'bracket'>('groups');
+  const [simActiveSubTab, setSimActiveSubTab] = useState<'groups' | 'qualifiers' | 'bracket'>('groups');
+  
+  // Manual qualifiers selection state
+  const [manualQualifiers, setManualQualifiers] = useState<{
+    firsts: { [groupLetter: string]: number | null };
+    seconds: { [groupLetter: string]: number | null };
+    thirds: { [groupLetter: string]: number | null };
+    bestThirdsGroupLetters: string[];
+    confirmed: boolean;
+  }>({
+    firsts: {},
+    seconds: {},
+    thirds: {},
+    bestThirdsGroupLetters: [],
+    confirmed: false
+  });
   
   // Notification banner state
   const [notification, setNotification] = useState<{message: string; type: 'success' | 'error'} | null>(null);
@@ -149,11 +167,15 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
   useEffect(() => {
     const savedSimScores = localStorage.getItem('wc_sim_scores');
     const savedDrawWinners = localStorage.getItem('wc_sim_draw_winners');
+    const savedManualQualifiers = localStorage.getItem('wc_sim_manual_qualifiers');
     if (savedSimScores) {
       setSimulatedScores(JSON.parse(savedSimScores));
     }
     if (savedDrawWinners) {
       setKnockoutDrawWinners(JSON.parse(savedDrawWinners));
+    }
+    if (savedManualQualifiers) {
+      setManualQualifiers(JSON.parse(savedManualQualifiers));
     }
   }, []);
 
@@ -187,12 +209,100 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
     localStorage.setItem('wc_sim_draw_winners', JSON.stringify(newDrawWinners));
   };
 
+  const updateManualQualifiers = (newQualifiers: typeof manualQualifiers) => {
+    setManualQualifiers(newQualifiers);
+    localStorage.setItem('wc_sim_manual_qualifiers', JSON.stringify(newQualifiers));
+  };
+
   const handleResetSimulation = () => {
     setSimulatedScores({});
     setKnockoutDrawWinners({});
+    const emptyQualifiers = {
+      firsts: {},
+      seconds: {},
+      thirds: {},
+      bestThirdsGroupLetters: [],
+      confirmed: false
+    };
+    setManualQualifiers(emptyQualifiers);
     localStorage.removeItem('wc_sim_scores');
     localStorage.removeItem('wc_sim_draw_winners');
+    localStorage.removeItem('wc_sim_manual_qualifiers');
     setNotification({ message: 'Simulación reiniciada con éxito.', type: 'success' });
+  };
+
+  const handleAutoFillQualifiers = () => {
+    const firsts: { [groupLetter: string]: number | null } = {};
+    const seconds: { [groupLetter: string]: number | null } = {};
+    const thirds: { [groupLetter: string]: number | null } = {};
+    
+    const groups = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+    const thirdsList: { group: string; points: number; goalDifference: number; goalsFor: number; apiId: number }[] = [];
+
+    groups.forEach(letter => {
+      const groupStandings = calculatedStandings[letter] || [];
+      firsts[letter] = groupStandings[0]?.apiId || null;
+      seconds[letter] = groupStandings[1]?.apiId || null;
+      thirds[letter] = groupStandings[2]?.apiId || null;
+
+      if (groupStandings[2]) {
+        thirdsList.push({
+          group: letter,
+          points: groupStandings[2].points,
+          goalDifference: groupStandings[2].goalDifference,
+          goalsFor: groupStandings[2].goalsFor,
+          apiId: groupStandings[2].apiId
+        });
+      }
+    });
+
+    thirdsList.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+      if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+      return a.group.localeCompare(b.group);
+    });
+
+    const bestThirdsGroupLetters = thirdsList.slice(0, 8).map(t => t.group);
+
+    updateManualQualifiers({
+      firsts,
+      seconds,
+      thirds,
+      bestThirdsGroupLetters,
+      confirmed: false
+    });
+    setNotification({ message: 'Clasificados auto-completados a partir de las posiciones de los grupos.', type: 'success' });
+  };
+
+  const handleConfirmQualifiers = () => {
+    const groups = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+    for (const letter of groups) {
+      if (!manualQualifiers.firsts[letter] || !manualQualifiers.seconds[letter] || !manualQualifiers.thirds[letter]) {
+        setNotification({ message: `Falta seleccionar clasificados en el Grupo ${letter}.`, type: 'error' });
+        return;
+      }
+    }
+
+    if (manualQualifiers.bestThirdsGroupLetters.length !== 8) {
+      setNotification({ message: `Debes seleccionar exactamente 8 mejores terceros. Actualmente seleccionados: ${manualQualifiers.bestThirdsGroupLetters.length}`, type: 'error' });
+      return;
+    }
+
+    updateManualQualifiers({
+      ...manualQualifiers,
+      confirmed: true
+    });
+    setNotification({ message: 'Clasificados confirmados. Cuadro eliminatorio desbloqueado con selecciones reales.', type: 'success' });
+    setSimActiveSubTab('bracket');
+  };
+
+  const handleModifyQualifiers = () => {
+    updateManualQualifiers({
+      ...manualQualifiers,
+      confirmed: false
+    });
+    setNotification({ message: 'Puedes modificar las selecciones. El bracket ha sido bloqueado temporalmente.', type: 'success' });
   };
 
   useEffect(() => {
@@ -579,6 +689,61 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
     return assignment;
   }, [calculatedStandings]);
 
+  // Manual third place assignments for bracket based on selected qualifiers
+  const manualThirdPlaceAssignments = useMemo(() => {
+    if (!manualQualifiers.confirmed) return {};
+
+    const qualifiedThirds: { group: string; team: any }[] = [];
+    const groups = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+    
+    groups.forEach(letter => {
+      if (manualQualifiers.bestThirdsGroupLetters.includes(letter)) {
+        const teamId = manualQualifiers.thirds[letter];
+        const team = teams.find(t => t.apiId === teamId);
+        if (team) {
+          qualifiedThirds.push({
+            group: letter,
+            team: { teamName: team.name, flagUrl: team.flagUrl, apiId: team.apiId }
+          });
+        }
+      }
+    });
+
+    const slots = [
+      { id: '3A/B/C/D/F', allowed: ['A', 'B', 'C', 'D', 'F'] },
+      { id: '3C/D/F/G/H', allowed: ['C', 'D', 'F', 'G', 'H'] },
+      { id: '3C/E/F/H/I', allowed: ['C', 'E', 'F', 'H', 'I'] },
+      { id: '3E/H/I/J/K', allowed: ['E', 'H', 'I', 'J', 'K'] },
+      { id: '3B/E/F/I/J', allowed: ['B', 'E', 'F', 'I', 'J'] },
+      { id: '3A/E/H/I/J', allowed: ['A', 'E', 'H', 'I', 'J'] },
+      { id: '3E/F/G/I/J', allowed: ['E', 'F', 'G', 'I', 'J'] },
+      { id: '3D/E/I/J/L', allowed: ['D', 'E', 'I', 'J', 'L'] },
+    ];
+    
+    const assignment: { [slotId: string]: any } = {};
+    const assignedTeams = new Set<string>();
+    
+    for (const slot of slots) {
+      const match = qualifiedThirds.find(qt => slot.allowed.includes(qt.group) && !assignedTeams.has(qt.team.teamName));
+      if (match) {
+        assignment[slot.id] = match.team;
+        assignedTeams.add(match.team.teamName);
+      }
+    }
+    
+    for (const slot of slots) {
+      if (!assignment[slot.id]) {
+        const fallback = qualifiedThirds.find(qt => !assignedTeams.has(qt.team.teamName));
+        if (fallback) {
+          assignment[slot.id] = fallback.team;
+          assignedTeams.add(fallback.team.teamName);
+        }
+      }
+    }
+    
+    return assignment;
+  }, [manualQualifiers, teams]);
+
   // Recursive team resolver
   const resolveTeam = (name: string): { name: string; flagUrl: string; apiId: number } | null => {
     if (!name) return null;
@@ -628,6 +793,18 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
     if (/^[12][A-L]$/.test(name)) {
       const rank = parseInt(name[0], 10);
       const groupLetter = name[1];
+      
+      if (manualQualifiers.confirmed) {
+        const apiId = rank === 1 ? manualQualifiers.firsts[groupLetter] : manualQualifiers.seconds[groupLetter];
+        if (apiId) {
+          const team = teams.find(t => t.apiId === apiId);
+          if (team) {
+            return { name: team.name, flagUrl: team.flagUrl, apiId: team.apiId };
+          }
+        }
+        return null;
+      }
+      
       const groupStandings = calculatedStandings[groupLetter];
       if (!groupStandings || groupStandings.length === 0) return null;
       
@@ -638,6 +815,14 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
     }
     
     if (name.startsWith('3')) {
+      if (manualQualifiers.confirmed) {
+        const assignedTeam = manualThirdPlaceAssignments[name];
+        if (assignedTeam) {
+          return { name: assignedTeam.teamName, flagUrl: assignedTeam.flagUrl, apiId: assignedTeam.apiId };
+        }
+        return null;
+      }
+      
       const assignedTeam = thirdPlaceAssignments[name];
       if (assignedTeam) {
         return { name: assignedTeam.teamName, flagUrl: assignedTeam.flagUrl, apiId: assignedTeam.apiId };
@@ -1504,7 +1689,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
             </div>
 
             {/* Sub-navigation */}
-            <div className="flex gap-2 border-b border-slate-800 pb-2">
+            <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-2">
               <button
                 onClick={() => setSimActiveSubTab('groups')}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -1516,229 +1701,434 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                 1. Fase de Grupos
               </button>
               <button
+                onClick={() => setSimActiveSubTab('qualifiers')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  simActiveSubTab === 'qualifiers'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>2. Definir Clasificados</span>
+                {manualQualifiers.confirmed && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                )}
+              </button>
+              <button
                 onClick={() => setSimActiveSubTab('bracket')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                   simActiveSubTab === 'bracket'
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                2. Cuadro Eliminatorio (Bracket)
+                <span>3. Cuadro Eliminatorio (Bracket)</span>
+                {!manualQualifiers.confirmed && (
+                  <Lock className="h-3 w-3 text-slate-500" />
+                )}
               </button>
             </div>
 
             {/* SUBTAB: GROUPS */}
             {simActiveSubTab === 'groups' && (
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-4">
-                {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((letter, groupIdx) => {
-                  const groupMatches = matches.filter(m => m.apiId >= 2026001 + groupIdx * 6 && m.apiId <= 2026006 + groupIdx * 6);
-                  const groupStandings = calculatedStandings[letter] || [];
-                  
-                  return (
-                    <div key={letter} className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10 flex flex-col gap-4">
-                      <h3 className="text-md font-bold text-slate-200 border-b border-slate-800/60 pb-2 flex items-center justify-between">
-                        <span>Grupo {letter}</span>
-                        <span className="text-xs text-slate-500 font-normal">6 partidos</span>
-                      </h3>
+              <div className="flex flex-col gap-6 mt-4">
+                {/* Format Clarification Banner */}
+                <div className="glass-panel p-4 rounded-xl border border-slate-800/60 bg-slate-900/10 flex items-start gap-3 text-xs text-slate-400">
+                  <AlertCircle className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-1">
+                    <p className="font-bold text-slate-200">Formato de Fase de Grupos - Mundial 2026</p>
+                    <p>
+                      Cada grupo consta de 4 selecciones y se juega en sistema de todos contra todos a **partido único (una sola vuelta)**. 
+                      Esto da un total de **6 partidos por grupo**, donde cada país juega exactamente **3 partidos**. 
+                      No existen partidos de ida y vuelta en esta fase de grupos del mundial.
+                    </p>
+                  </div>
+                </div>
 
-                      {/* Standings Table */}
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead>
-                            <tr className="border-b border-slate-800 text-slate-400 font-semibold uppercase">
-                              <th className="py-2 w-8 text-center">Pos</th>
-                              <th className="py-2">Equipo</th>
-                              <th className="py-2 text-center w-10">P</th>
-                              <th className="py-2 text-center w-12">DG</th>
-                              <th className="py-2 text-center w-12 font-bold text-slate-200">PTS</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800/40">
-                            {groupStandings.map((row, idx) => {
-                              const isQualifying = idx < 2; // Top 2
-                              const isThird = idx === 2; // 3rd
-                              
-                              return (
-                                <tr key={row.teamName} className="hover:bg-slate-800/10">
-                                  <td className="py-2.5 text-center font-bold">
-                                    <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full ${
-                                      isQualifying ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                      isThird ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                                      'text-slate-500'
-                                    }`}>
-                                      {idx + 1}
-                                    </span>
-                                  </td>
-                                  <td className="py-2.5">
-                                    <div className="flex items-center gap-2">
-                                      <img src={row.flagUrl} alt="" className="h-3 w-4.5 rounded-sm object-cover" />
-                                      <span className="font-semibold text-slate-200 truncate max-w-[120px]">{row.teamName}</span>
-                                    </div>
-                                  </td>
-                                  <td className="py-2.5 text-center text-slate-400">{row.played}</td>
-                                  <td className={`py-2.5 text-center font-medium ${row.goalDifference > 0 ? 'text-emerald-400' : row.goalDifference < 0 ? 'text-red-400' : 'text-slate-400'}`}>
-                                    {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
-                                  </td>
-                                  <td className="py-2.5 text-center font-bold text-slate-100">{row.points}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                  {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((letter, groupIdx) => {
+                    const groupMatches = matches.filter(m => m.apiId >= 2026001 + groupIdx * 6 && m.apiId <= 2026006 + groupIdx * 6);
+                    const groupStandings = calculatedStandings[letter] || [];
+                    
+                    return (
+                      <div key={letter} className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10 flex flex-col gap-4">
+                        <h3 className="text-md font-bold text-slate-200 border-b border-slate-800/60 pb-2 flex items-center justify-between">
+                          <span>Grupo {letter}</span>
+                          <span className="text-xs text-slate-500 font-normal">6 partidos</span>
+                        </h3>
+
+                        {/* Standings Table */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="border-b border-slate-800 text-slate-400 font-semibold uppercase">
+                                <th className="py-2 w-8 text-center">Pos</th>
+                                <th className="py-2">Equipo</th>
+                                <th className="py-2 text-center w-10">P</th>
+                                <th className="py-2 text-center w-12">DG</th>
+                                <th className="py-2 text-center w-12 font-bold text-slate-200">PTS</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/40">
+                              {groupStandings.map((row, idx) => {
+                                const isQualifying = idx < 2; // Top 2
+                                const isThird = idx === 2; // 3rd
+                                
+                                return (
+                                  <tr key={row.teamName} className="hover:bg-slate-800/10">
+                                    <td className="py-2.5 text-center font-bold">
+                                      <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full ${
+                                        isQualifying ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                        isThird ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                                        'text-slate-500'
+                                      }`}>
+                                        {idx + 1}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5">
+                                      <div className="flex items-center gap-2">
+                                        <img src={row.flagUrl} alt="" className="h-3 w-4.5 rounded-sm object-cover" />
+                                        <span className="font-semibold text-slate-200 truncate max-w-[120px]">{row.teamName}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 text-center text-slate-400">{row.played}</td>
+                                    <td className={`py-2.5 text-center font-medium ${row.goalDifference > 0 ? 'text-emerald-400' : row.goalDifference < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                                      {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
+                                    </td>
+                                    <td className="py-2.5 text-center font-bold text-slate-100">{row.points}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Matches Input List */}
+                        <div className="space-y-3 mt-2 border-t border-slate-800/40 pt-4">
+                          {groupMatches.map(m => {
+                            const score = simulatedScores[m.apiId] || { homeGoals: null, awayGoals: null };
+                            return (
+                              <div key={m.apiId} className="flex items-center justify-between text-xs py-1.5 px-2.5 bg-slate-900/30 rounded-xl border border-slate-800/60 hover:bg-slate-900/50 transition-colors">
+                                {/* Home */}
+                                <div className="flex items-center gap-2 w-[40%]">
+                                  <img src={m.homeTeam.flagUrl} className="h-3 w-4.5 rounded-sm object-cover shrink-0" />
+                                  <span className="font-semibold text-slate-350 truncate">{m.homeTeam.name}</span>
+                                </div>
+                                {/* Inputs */}
+                                <div className="flex items-center gap-1.5 justify-center w-[20%]">
+                                   <select
+                                     value={score.homeGoals !== null ? String(score.homeGoals) : ''}
+                                     onChange={(e) => updateSimulatedScore(m.apiId, 'home', e.target.value)}
+                                     className="w-8 h-8 text-center bg-slate-950 border border-slate-850 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2"
+                                     style={{ textAlignLast: 'center' }}
+                                   >
+                                     <option value="" className="text-slate-505">-</option>
+                                     {Array.from({ length: 21 }, (_, i) => (
+                                       <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
+                                         {i}
+                                       </option>
+                                     ))}
+                                   </select>
+                                   <span className="text-slate-605 font-bold">-</span>
+                                   <select
+                                     value={score.awayGoals !== null ? String(score.awayGoals) : ''}
+                                     onChange={(e) => updateSimulatedScore(m.apiId, 'away', e.target.value)}
+                                     className="w-8 h-8 text-center bg-slate-950 border border-slate-855 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2"
+                                     style={{ textAlignLast: 'center' }}
+                                   >
+                                     <option value="" className="text-slate-505">-</option>
+                                     {Array.from({ length: 21 }, (_, i) => (
+                                       <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
+                                         {i}
+                                       </option>
+                                     ))}
+                                   </select>
+                                </div>
+                                {/* Away */}
+                                <div className="flex items-center gap-2 justify-end w-[40%] text-right">
+                                  <span className="font-semibold text-slate-350 truncate">{m.awayTeam.name}</span>
+                                  <img src={m.awayTeam.flagUrl} className="h-3 w-4.5 rounded-sm object-cover shrink-0" />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-                      {/* Matches Input List */}
-                      <div className="space-y-3 mt-2 border-t border-slate-800/40 pt-4">
-                        {groupMatches.map(m => {
-                          const score = simulatedScores[m.apiId] || { homeGoals: null, awayGoals: null };
-                          return (
-                            <div key={m.apiId} className="flex items-center justify-between text-xs py-1.5 px-2.5 bg-slate-900/30 rounded-xl border border-slate-800/60 hover:bg-slate-900/50 transition-colors">
-                              {/* Home */}
-                              <div className="flex items-center gap-2 w-[40%]">
-                                <img src={m.homeTeam.flagUrl} className="h-3 w-4.5 rounded-sm object-cover shrink-0" />
-                                <span className="font-semibold text-slate-350 truncate">{m.homeTeam.name}</span>
+            {/* SUBTAB: QUALIFIERS */}
+            {simActiveSubTab === 'qualifiers' && (
+              <div className="flex flex-col gap-8 mt-4">
+                {/* Header buttons */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10">
+                  <div className="flex flex-col gap-1">
+                    <h3 className="text-sm font-bold text-slate-200">Acciones de Clasificados</h3>
+                    <p className="text-xs text-slate-400">Selecciona quién pasa en cada posición o carga el cálculo automático de tu fase de grupos simulada.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={handleAutoFillQualifiers}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-xl text-xs font-bold flex items-center gap-2 transition-all"
+                    >
+                      <Sparkles className="h-4 w-4 text-emerald-400" />
+                      <span>Auto-completar desde Fase de Grupos</span>
+                    </button>
+                    {!manualQualifiers.confirmed ? (
+                      <button
+                        onClick={handleConfirmQualifiers}
+                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-955 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/10"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Confirmar y Desbloquear Bracket</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleModifyQualifiers}
+                        className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-450 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-2 transition-all"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                        <span>Modificar Clasificados</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Grid of Groups */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map(letter => {
+                    const groupTeams = calculatedStandings[letter] || [];
+                    return (
+                      <div key={letter} className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/10 flex flex-col gap-4">
+                        <h4 className="text-sm font-bold text-emerald-450 border-b border-slate-800 pb-2 flex items-center justify-between">
+                          <span>Grupo {letter}</span>
+                          <span className="text-[10px] text-slate-500 font-semibold uppercase">Posiciones</span>
+                        </h4>
+
+                        {/* Standings quick view if they have played */}
+                        <div className="text-[11px] text-slate-400 space-y-1 mb-2">
+                          {groupTeams.map((row, idx) => (
+                            <div key={row.teamName} className="flex justify-between items-center py-0.5 px-1 rounded hover:bg-slate-800/20">
+                              <span className="font-semibold text-slate-500 w-4">{idx + 1}º</span>
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                <img src={row.flagUrl} className="h-2.5 w-4 rounded-sm object-cover" />
+                                <span className="truncate text-slate-300 font-medium">{row.teamName}</span>
                               </div>
-                              {/* Inputs */}
-                              <div className="flex items-center gap-1.5 justify-center w-[20%]">
-                                 <select
-                                   value={score.homeGoals !== null ? String(score.homeGoals) : ''}
-                                   onChange={(e) => updateSimulatedScore(m.apiId, 'home', e.target.value)}
-                                   className="w-8 h-8 text-center bg-slate-950 border border-slate-850 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2"
-                                   style={{ textAlignLast: 'center' }}
-                                 >
-                                   <option value="" className="text-slate-505">-</option>
-                                   {Array.from({ length: 21 }, (_, i) => (
-                                     <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
-                                       {i}
-                                     </option>
-                                   ))}
-                                 </select>
-                                 <span className="text-slate-605 font-bold">-</span>
-                                 <select
-                                   value={score.awayGoals !== null ? String(score.awayGoals) : ''}
-                                   onChange={(e) => updateSimulatedScore(m.apiId, 'away', e.target.value)}
-                                   className="w-8 h-8 text-center bg-slate-950 border border-slate-855 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2"
-                                   style={{ textAlignLast: 'center' }}
-                                 >
-                                   <option value="" className="text-slate-505">-</option>
-                                   {Array.from({ length: 21 }, (_, i) => (
-                                     <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
-                                       {i}
-                                     </option>
-                                   ))}
-                                 </select>
-                              </div>
-                              {/* Away */}
-                              <div className="flex items-center gap-2 justify-end w-[40%] text-right">
-                                <span className="font-semibold text-slate-350 truncate">{m.awayTeam.name}</span>
-                                <img src={m.awayTeam.flagUrl} className="h-3 w-4.5 rounded-sm object-cover shrink-0" />
-                              </div>
+                              <span className="text-slate-500 font-bold">{row.points} pts</span>
                             </div>
-                          );
-                        })}
+                          ))}
+                        </div>
+
+                        {/* Selectors */}
+                        <div className="space-y-3.5 border-t border-slate-800/60 pt-3.5">
+                          {/* 1st Place */}
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">1º Clasificado (Ganador)</label>
+                            <select
+                              disabled={manualQualifiers.confirmed}
+                              value={manualQualifiers.firsts[letter] || ''}
+                              onChange={(e) => {
+                                const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                                const firsts = { ...manualQualifiers.firsts, [letter]: val };
+                                const seconds = { ...manualQualifiers.seconds };
+                                if (seconds[letter] === val) seconds[letter] = null;
+                                const thirds = { ...manualQualifiers.thirds };
+                                if (thirds[letter] === val) thirds[letter] = null;
+                                updateManualQualifiers({ ...manualQualifiers, firsts, seconds, thirds });
+                              }}
+                              className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <option value="">-- Seleccionar --</option>
+                              {groupTeams.map(t => (
+                                <option key={t.apiId} value={t.apiId}>{t.teamName}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* 2nd Place */}
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">2º Clasificado (Subcampeón)</label>
+                            <select
+                              disabled={manualQualifiers.confirmed}
+                              value={manualQualifiers.seconds[letter] || ''}
+                              onChange={(e) => {
+                                const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                                const firsts = { ...manualQualifiers.firsts };
+                                if (firsts[letter] === val) firsts[letter] = null;
+                                const seconds = { ...manualQualifiers.seconds, [letter]: val };
+                                const thirds = { ...manualQualifiers.thirds };
+                                if (thirds[letter] === val) thirds[letter] = null;
+                                updateManualQualifiers({ ...manualQualifiers, firsts, seconds, thirds });
+                              }}
+                              className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <option value="">-- Seleccionar --</option>
+                              {groupTeams.map(t => (
+                                <option
+                                  key={t.apiId}
+                                  value={t.apiId}
+                                  disabled={manualQualifiers.firsts[letter] === t.apiId}
+                                >
+                                  {t.teamName} {manualQualifiers.firsts[letter] === t.apiId ? '(Elegido 1º)' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* 3rd Place */}
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">3º de Grupo (Elegible mejor tercero)</label>
+                            <select
+                              disabled={manualQualifiers.confirmed}
+                              value={manualQualifiers.thirds[letter] || ''}
+                              onChange={(e) => {
+                                const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                                const firsts = { ...manualQualifiers.firsts };
+                                if (firsts[letter] === val) firsts[letter] = null;
+                                const seconds = { ...manualQualifiers.seconds };
+                                if (seconds[letter] === val) seconds[letter] = null;
+                                const thirds = { ...manualQualifiers.thirds, [letter]: val };
+                                updateManualQualifiers({ ...manualQualifiers, firsts, seconds, thirds });
+                              }}
+                              className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <option value="">-- Seleccionar --</option>
+                              {groupTeams.map(t => (
+                                <option
+                                  key={t.apiId}
+                                  value={t.apiId}
+                                  disabled={manualQualifiers.firsts[letter] === t.apiId || manualQualifiers.seconds[letter] === t.apiId}
+                                >
+                                  {t.teamName} {manualQualifiers.firsts[letter] === t.apiId ? '(Elegido 1º)' : manualQualifiers.seconds[letter] === t.apiId ? '(Elegido 2º)' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+
+                {/* Best Thirds Selector Panel */}
+                <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 flex flex-col gap-4 mt-4">
+                  <div className="border-b border-slate-800 pb-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col gap-0.5">
+                      <h4 className="text-md font-bold text-slate-200 flex items-center gap-2">
+                        <Award className="h-5 w-5 text-emerald-400" />
+                        <span>Selección de los 8 Mejores Terceros</span>
+                      </h4>
+                      <p className="text-xs text-slate-400">Marca los 8 terceros lugares que avanzan a la Ronda de 32 del mundial (debes elegir exactamente 8).</p>
                     </div>
-                  );
-                })}
+                    <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                      manualQualifiers.bestThirdsGroupLetters.length === 8
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                        : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                    }`}>
+                      Seleccionados: {manualQualifiers.bestThirdsGroupLetters.length} / 8
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4 mt-2">
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map(letter => {
+                      const thirdTeamId = manualQualifiers.thirds[letter];
+                      const team = teams.find(t => t.apiId === thirdTeamId);
+                      const isSelected = manualQualifiers.bestThirdsGroupLetters.includes(letter);
+                      
+                      if (!team) {
+                        return (
+                          <div key={letter} className="glass-panel p-3 rounded-xl border border-dashed border-slate-800/60 bg-slate-950/20 text-center opacity-50 flex flex-col justify-center items-center h-[90px]">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">Grupo {letter}</span>
+                            <span className="text-[10px] text-slate-600 italic mt-1">Sin 3º elegido</span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={letter}
+                          disabled={manualQualifiers.confirmed}
+                          onClick={() => {
+                            let list = [...manualQualifiers.bestThirdsGroupLetters];
+                            if (list.includes(letter)) {
+                              list = list.filter(l => l !== letter);
+                            } else {
+                              list.push(letter);
+                            }
+                            updateManualQualifiers({ ...manualQualifiers, bestThirdsGroupLetters: list });
+                          }}
+                          className={`p-3.5 rounded-xl border transition-all flex flex-col items-center justify-between text-center gap-2 h-[100px] hover:scale-[1.02] active:scale-[0.98] ${
+                            isSelected
+                              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-md shadow-emerald-500/5'
+                              : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700/60'
+                          }`}
+                        >
+                          <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                            Grupo {letter}
+                          </span>
+                          <div className="flex items-center gap-1.5 max-w-full">
+                            <img src={team.flagUrl} className="h-3 w-4.5 rounded-sm object-cover shrink-0" />
+                            <span className="font-bold text-xs truncate max-w-[80px]">{team.name}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Footer confirm */}
+                {!manualQualifiers.confirmed && (
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={handleConfirmQualifiers}
+                      className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-955 font-extrabold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/15"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Confirmar y Desbloquear Bracket</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {/* SUBTAB: BRACKET */}
             {simActiveSubTab === 'bracket' && (
               <div className="flex flex-col gap-6 mt-4">
-                <div className="glass-panel p-4 rounded-xl border border-slate-800/60 bg-slate-900/10 text-xs text-slate-400">
-                  <p>⚠️ **Nota sobre empates**: En el cuadro eliminatorio los partidos no pueden terminar en empate. Si ingresas el mismo marcador, deberás seleccionar qué selección avanza haciendo clic en su botón correspondiente.</p>
-                </div>
-
-                {/* Bracket Columns Horizontal Scroll Container */}
-                <div className="flex gap-8 overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                  
-                  {/* Round of 32 */}
-                  <div className="flex flex-col gap-6 min-w-[280px] shrink-0">
-                    <h3 className="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2 uppercase tracking-wider text-center">Ronda de 32</h3>
-                    <div className="space-y-4">
-                      {matches.filter(m => m.apiId >= 2026073 && m.apiId <= 2026088).map(m => (
-                        <BracketMatchCard
-                          key={m.apiId}
-                          match={m}
-                          resolveTeam={resolveTeam}
-                          simulatedScores={simulatedScores}
-                          knockoutDrawWinners={knockoutDrawWinners}
-                          updateSimulatedScore={updateSimulatedScore}
-                          handleSelectTieWinner={handleSelectTieWinner}
-                        />
-                      ))}
+                {!manualQualifiers.confirmed ? (
+                  <div className="glass-panel p-8 rounded-2xl border border-slate-800/80 bg-slate-900/10 flex flex-col items-center text-center gap-4 py-16">
+                    <div className="h-12 w-12 rounded-full bg-slate-955 flex items-center justify-center border border-slate-800">
+                      <Lock className="h-6 w-6 text-amber-500 animate-pulse" />
                     </div>
-                  </div>
-
-                  {/* Round of 16 */}
-                  <div className="flex flex-col gap-6 min-w-[280px] shrink-0 justify-around">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2 uppercase tracking-wider text-center">Octavos de Final</h3>
-                      <div className="space-y-8 mt-6">
-                        {matches.filter(m => m.apiId >= 2026089 && m.apiId <= 2026096).map(m => (
-                          <BracketMatchCard
-                            key={m.apiId}
-                            match={m}
-                            resolveTeam={resolveTeam}
-                            simulatedScores={simulatedScores}
-                            knockoutDrawWinners={knockoutDrawWinners}
-                            updateSimulatedScore={updateSimulatedScore}
-                            handleSelectTieWinner={handleSelectTieWinner}
-                          />
-                        ))}
-                      </div>
+                    <div className="flex flex-col gap-1 max-w-md">
+                      <h3 className="text-lg font-bold text-slate-200">Cuadro Eliminatorio Bloqueado</h3>
+                      <p className="text-xs text-slate-400">
+                        Para poder visualizar y simular el cuadro eliminatorio con selecciones reales, primero debes definir quiénes clasifican en la pestaña anterior.
+                      </p>
                     </div>
+                    <button
+                      onClick={() => setSimActiveSubTab('qualifiers')}
+                      className="mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-955 font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-500/10"
+                    >
+                      <span>Definir Clasificados</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
                   </div>
-
-                  {/* Quarter-finals */}
-                  <div className="flex flex-col gap-6 min-w-[280px] shrink-0 justify-around">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2 uppercase tracking-wider text-center">Cuartos de Final</h3>
-                      <div className="space-y-16 mt-12">
-                        {matches.filter(m => m.apiId >= 2026097 && m.apiId <= 2026100).map(m => (
-                          <BracketMatchCard
-                            key={m.apiId}
-                            match={m}
-                            resolveTeam={resolveTeam}
-                            simulatedScores={simulatedScores}
-                            knockoutDrawWinners={knockoutDrawWinners}
-                            updateSimulatedScore={updateSimulatedScore}
-                            handleSelectTieWinner={handleSelectTieWinner}
-                          />
-                        ))}
-                      </div>
+                ) : (
+                  <>
+                    <div className="glass-panel p-4 rounded-xl border border-slate-800/60 bg-slate-900/10 text-xs text-slate-400">
+                      <p>⚠️ **Nota sobre empates**: En el cuadro eliminatorio los partidos no pueden terminar en empate. Si ingresas el mismo marcador, deberás seleccionar qué selección avanza haciendo clic en su botón correspondiente.</p>
                     </div>
-                  </div>
 
-                  {/* Semi-finals */}
-                  <div className="flex flex-col gap-6 min-w-[280px] shrink-0 justify-around">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2 uppercase tracking-wider text-center">Semifinales</h3>
-                      <div className="space-y-32 mt-24">
-                        {matches.filter(m => m.apiId >= 2026101 && m.apiId <= 2026102).map(m => (
-                          <BracketMatchCard
-                            key={m.apiId}
-                            match={m}
-                            resolveTeam={resolveTeam}
-                            simulatedScores={simulatedScores}
-                            knockoutDrawWinners={knockoutDrawWinners}
-                            updateSimulatedScore={updateSimulatedScore}
-                            handleSelectTieWinner={handleSelectTieWinner}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Final & 3rd Place */}
-                  <div className="flex flex-col gap-6 min-w-[320px] shrink-0 justify-around">
-                    <div className="space-y-12">
-                      {/* Third place */}
-                      <div>
-                        <h3 className="text-xs font-bold text-slate-400 border-b border-slate-800 pb-1.5 uppercase tracking-wider text-center">Tercer Puesto</h3>
-                        <div className="mt-4">
-                          {matches.filter(m => m.apiId === 2026103).map(m => (
+                    {/* Bracket Columns Horizontal Scroll Container */}
+                    <div className="flex gap-8 overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                      
+                      {/* Round of 32 */}
+                      <div className="flex flex-col gap-6 min-w-[280px] shrink-0">
+                        <h3 className="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2 uppercase tracking-wider text-center">Ronda de 32</h3>
+                        <div className="space-y-4">
+                          {matches.filter(m => m.apiId >= 2026073 && m.apiId <= 2026088).map(m => (
                             <BracketMatchCard
                               key={m.apiId}
                               match={m}
@@ -1752,48 +2142,131 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                         </div>
                       </div>
 
-                      {/* Final */}
-                      <div>
-                        <h3 className="text-sm font-black text-amber-400 border-b border-amber-500/20 pb-2 uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
-                          <Trophy className="h-4 w-4" />
-                          <span>Gran Final</span>
-                        </h3>
-                        <div className="mt-4 bg-gradient-to-tr from-slate-955 via-slate-900/60 to-slate-955 p-2.5 rounded-2xl border-2 border-amber-500/20 shadow-xl shadow-amber-500/5">
-                          {matches.filter(m => m.apiId === 2026104).map(m => (
-                            <BracketMatchCard
-                              key={m.apiId}
-                              match={m}
-                              resolveTeam={resolveTeam}
-                              simulatedScores={simulatedScores}
-                              knockoutDrawWinners={knockoutDrawWinners}
-                              updateSimulatedScore={updateSimulatedScore}
-                              handleSelectTieWinner={handleSelectTieWinner}
-                            />
-                          ))}
+                      {/* Round of 16 */}
+                      <div className="flex flex-col gap-6 min-w-[280px] shrink-0 justify-around">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2 uppercase tracking-wider text-center">Octavos de Final</h3>
+                          <div className="space-y-8 mt-6">
+                            {matches.filter(m => m.apiId >= 2026089 && m.apiId <= 2026096).map(m => (
+                              <BracketMatchCard
+                                key={m.apiId}
+                                match={m}
+                                resolveTeam={resolveTeam}
+                                simulatedScores={simulatedScores}
+                                knockoutDrawWinners={knockoutDrawWinners}
+                                updateSimulatedScore={updateSimulatedScore}
+                                handleSelectTieWinner={handleSelectTieWinner}
+                              />
+                            ))}
+                          </div>
                         </div>
-
-                        {/* Project World Champion */}
-                        {(() => {
-                          const champion = resolveTeam('W104');
-                          if (champion) {
-                            return (
-                              <div className="mt-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-center flex flex-col items-center justify-center gap-2 animate-bounce">
-                                <Trophy className="h-8 w-8 text-amber-400" />
-                                <div>
-                                  <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Campeón del Mundo Proyectado</p>
-                                  <h4 className="text-md font-bold text-white mt-1">{champion.name}</h4>
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-
                       </div>
-                    </div>
-                  </div>
 
-                </div>
+                      {/* Quarter Finals */}
+                      <div className="flex flex-col gap-6 min-w-[280px] shrink-0 justify-around">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2 uppercase tracking-wider text-center">Cuartos de Final</h3>
+                          <div className="space-y-16 mt-6">
+                            {matches.filter(m => m.apiId >= 2026097 && m.apiId <= 2026100).map(m => (
+                              <BracketMatchCard
+                                key={m.apiId}
+                                match={m}
+                                resolveTeam={resolveTeam}
+                                simulatedScores={simulatedScores}
+                                knockoutDrawWinners={knockoutDrawWinners}
+                                updateSimulatedScore={updateSimulatedScore}
+                                handleSelectTieWinner={handleSelectTieWinner}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Semi Finals */}
+                      <div className="flex flex-col gap-6 min-w-[280px] shrink-0 justify-around">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-300 border-b border-slate-800 pb-2 uppercase tracking-wider text-center">Semifinales</h3>
+                          <div className="space-y-32 mt-6">
+                            {matches.filter(m => m.apiId >= 2026101 && m.apiId <= 2026102).map(m => (
+                              <BracketMatchCard
+                                key={m.apiId}
+                                match={m}
+                                resolveTeam={resolveTeam}
+                                simulatedScores={simulatedScores}
+                                knockoutDrawWinners={knockoutDrawWinners}
+                                updateSimulatedScore={updateSimulatedScore}
+                                handleSelectTieWinner={handleSelectTieWinner}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Finals Columns (Third Place & Final) */}
+                      <div className="flex flex-col gap-6 min-w-[320px] shrink-0 justify-around">
+                        <div className="space-y-12">
+                          {/* Third place */}
+                          <div>
+                            <h3 className="text-xs font-bold text-slate-400 border-b border-slate-800 pb-1.5 uppercase tracking-wider text-center">Tercer Puesto</h3>
+                            <div className="mt-4">
+                              {matches.filter(m => m.apiId === 2026103).map(m => (
+                                <BracketMatchCard
+                                  key={m.apiId}
+                                  match={m}
+                                  resolveTeam={resolveTeam}
+                                  simulatedScores={simulatedScores}
+                                  knockoutDrawWinners={knockoutDrawWinners}
+                                  updateSimulatedScore={updateSimulatedScore}
+                                  handleSelectTieWinner={handleSelectTieWinner}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Final */}
+                          <div>
+                            <h3 className="text-sm font-black text-amber-400 border-b border-amber-500/20 pb-2 uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
+                              <Trophy className="h-4 w-4" />
+                              <span>Gran Final</span>
+                            </h3>
+                            <div className="mt-4 bg-gradient-to-tr from-slate-955 via-slate-900/60 to-slate-955 p-2.5 rounded-2xl border-2 border-amber-500/20 shadow-xl shadow-amber-500/5">
+                              {matches.filter(m => m.apiId === 2026104).map(m => (
+                                <BracketMatchCard
+                                  key={m.apiId}
+                                  match={m}
+                                  resolveTeam={resolveTeam}
+                                  simulatedScores={simulatedScores}
+                                  knockoutDrawWinners={knockoutDrawWinners}
+                                  updateSimulatedScore={updateSimulatedScore}
+                                  handleSelectTieWinner={handleSelectTieWinner}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Project World Champion */}
+                            {(() => {
+                              const champion = resolveTeam('W104');
+                              if (champion) {
+                                return (
+                                  <div className="mt-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-center flex flex-col items-center justify-center gap-2 animate-bounce">
+                                    <Trophy className="h-8 w-8 text-amber-400" />
+                                    <div>
+                                      <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Campeón del Mundo Proyectado</p>
+                                      <h4 className="text-md font-bold text-white mt-1">{champion.name}</h4>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </section>
