@@ -1940,11 +1940,10 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
               <AnimatePresence initial={false}>
                 {isDraftScorerOpen && (
                   <motion.div
-                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                    animate={{ height: "auto", opacity: 1, marginTop: 20 }}
-                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    initial={{ height: 0, opacity: 0, marginTop: 0, overflow: 'hidden' }}
+                    animate={{ height: "auto", opacity: 1, marginTop: 20, overflow: 'visible' }}
+                    exit={{ height: 0, opacity: 0, marginTop: 0, overflow: 'hidden' }}
                     transition={{ duration: 0.25, ease: "easeInOut" }}
-                    className="overflow-hidden"
                   >
                     <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-950/40">
                       <div className="max-w-xl space-y-4">
@@ -1963,6 +1962,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                               setShowTopScorerResults(true);
                             }}
                             onFocus={() => setShowTopScorerResults(true)}
+                            onBlur={() => setTimeout(() => setShowTopScorerResults(false), 150)}
                             className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl py-2.5 pl-10 pr-4 text-slate-100 placeholder:text-slate-500 focus:outline-none text-xs"
                           />
 
@@ -1987,7 +1987,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                                   <button
                                     key={player.apiId}
                                     type="button"
-                                    onClick={() => handleSelectTopScorer(player)}
+                                    onMouseDown={() => handleSelectTopScorer(player)}
                                     className="w-full px-4 py-2.5 hover:bg-slate-800 flex items-center justify-between text-left text-xs transition-colors duration-150 border-b border-slate-800/50"
                                   >
                                     <div>
