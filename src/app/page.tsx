@@ -19,7 +19,9 @@ import {
   Trophy,
   Activity,
   Calendar,
-  Flame
+  Flame,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import Dashboard from '../components/Dashboard';
 
@@ -33,6 +35,7 @@ export default function Home() {
   // Authentication form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [rememberMe, setRememberMe] = useState(true); // Default to true as user requested
   
@@ -40,6 +43,7 @@ export default function Home() {
   const [groupName, setGroupName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [groupPassword, setGroupPassword] = useState('');
+  const [showGroupPassword, setShowGroupPassword] = useState(false);
   
   const [error, setError] = useState('');
   const [notification, setNotification] = useState<string | null>(null);
@@ -491,13 +495,24 @@ export default function Home() {
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-3.5 h-4.5 w-4.5 text-slate-500" />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       required
                       placeholder="Escribe tu contraseña"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-slate-950/80 border border-slate-800 focus:border-mexico-green rounded-xl py-2.5 pl-10 pr-4 text-slate-100 placeholder:text-slate-650 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 text-xs transition-all duration-200"
+                      className="w-full bg-slate-950/80 border border-slate-800 focus:border-mexico-green rounded-xl py-2.5 pl-10 pr-11 text-slate-100 placeholder:text-slate-650 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 text-xs transition-all duration-200"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-200 transition-colors p-1"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -575,12 +590,23 @@ export default function Home() {
                       <div className="relative">
                         <KeyRound className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-600" />
                         <input
-                          type="password"
+                          type={showGroupPassword ? "text" : "password"}
                           placeholder="Contraseña"
                           value={groupPassword}
                           onChange={(e) => setGroupPassword(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 focus:border-mexico-green rounded-xl py-2 pl-8 pr-3 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200"
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-mexico-green rounded-xl py-2 pl-8 pr-8 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowGroupPassword(!showGroupPassword)}
+                          className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 transition-colors p-1"
+                        >
+                          {showGroupPassword ? (
+                            <EyeOff className="h-3.5 w-3.5" />
+                          ) : (
+                            <Eye className="h-3.5 w-3.5" />
+                          )}
+                        </button>
                       </div>
                     </div>
 
@@ -623,12 +649,23 @@ export default function Home() {
                       <div className="relative">
                         <KeyRound className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-600" />
                         <input
-                          type="password"
+                          type={showGroupPassword ? "text" : "password"}
                           placeholder="Contraseña"
                           value={groupPassword}
                           onChange={(e) => setGroupPassword(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 focus:border-usa-blue rounded-xl py-2 pl-8 pr-3 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200"
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-usa-blue rounded-xl py-2 pl-8 pr-8 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowGroupPassword(!showGroupPassword)}
+                          className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 transition-colors p-1"
+                        >
+                          {showGroupPassword ? (
+                            <EyeOff className="h-3.5 w-3.5" />
+                          ) : (
+                            <Eye className="h-3.5 w-3.5" />
+                          )}
+                        </button>
                       </div>
                     </div>
 
