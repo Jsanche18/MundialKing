@@ -28,9 +28,9 @@ export async function PUT(req: Request) {
     const kickoffTime = new Date(match.kickoffTimestamp).getTime();
     const diffMins = (kickoffTime - now) / (1000 * 60);
 
-    if (match.status === "FT" || match.status === "LIVE" || diffMins <= 60) {
+    if (match.status === "FT" || match.status === "LIVE" || diffMins <= 15) {
       return NextResponse.json(
-        { error: "Predicción bloqueada: El partido inicia en menos de 60 minutos o ya ha comenzado." },
+        { error: "Predicción bloqueada: El partido inicia en menos de 15 minutos o ya ha comenzado." },
         { status: 403 }
       );
     }

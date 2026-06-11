@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
+  Home,
   Calendar, 
   Trophy, 
   Users, 
@@ -93,7 +94,7 @@ const COUNTRY_TRANSLATIONS: { [key: string]: string[] } = {
 };
 
 export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLogout }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'matches' | 'standings' | 'draft' | 'simulador'>('matches');
+  const [activeTab, setActiveTab] = useState<'home' | 'matches' | 'standings' | 'draft' | 'simulador'>('home');
   
   // Real Database States loaded via API
   const [matches, setMatches] = useState<any[]>([]);
@@ -510,13 +511,13 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
     return groupMatches.length > 0 && groupMatches.every(m => m.status === 'FT');
   }, [matches]);
 
-  // Helper to check if a match is locked (kickoff time <= 60 minutes from simulated now)
+  // Helper to check if a match is locked (kickoff time <= 15 minutes from simulated now)
   const isMatchLocked = (kickoffStr: string, status: string) => {
     if (status === 'FT' || status === 'LIVE') return true;
     const kickoffTime = new Date(kickoffStr).getTime();
     const diffMs = kickoffTime - simulatedNow;
     const diffMins = diffMs / (1000 * 60);
-    return diffMins <= 60;
+    return diffMins <= 15;
   };
 
   // Helper to format remaining time or lock status
@@ -532,7 +533,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       return { text: 'Comenzado', style: 'bg-red-500/20 text-red-400 border border-red-500/30' };
     }
     
-    if (diffMins <= 60) {
+    if (diffMins <= 15) {
       return { text: `Bloqueado (Inicia en ${diffMins} min)`, style: 'bg-amber-500/20 text-amber-400 border border-amber-500/30' };
     }
     
@@ -1328,6 +1329,18 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
           {/* Nav Items */}
           <nav className="space-y-2">
             <button
+              onClick={() => setActiveTab('home')}
+              className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                activeTab === 'home'
+                  ? 'bg-gradient-to-r from-indigo-500/20 to-transparent border-l-4 border-indigo-500 text-slate-100 font-medium'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Home className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${activeTab === 'home' ? 'text-indigo-400' : ''}`} />
+              <span>Inicio</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('matches')}
               className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${
                 activeTab === 'matches'
@@ -1455,13 +1468,205 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
           </div>
         </header>
 
+        {/* TAB: INICIO (HOME) */}
+        {activeTab === 'home' && (
+          <section className="flex-1 flex flex-col gap-8 pb-10">
+            {/* Welcome Banner */}
+            <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 p-6 md:p-8 shadow-2xl animate-fadeIn">
+              {/* Decorative elements */}
+              <div className="absolute -top-10 -right-10 h-32 w-32 bg-mexico-green/10 rounded-full blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 h-32 w-32 bg-usa-blue/10 rounded-full blur-3xl" />
+              
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-3">
+                    <Sparkles className="h-3 w-3" />
+                    Panel de Control Principal
+                  </span>
+                  <h2 className="text-2xl md:text-4xl font-display font-black tracking-tight text-white mb-2">
+                    ¡Hola, {currentUser.name}! 🏆
+                  </h2>
+                  <p className="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed">
+                    Te damos la bienvenida a <strong className="text-white">MundialKing</strong>, la porra definitiva para la Copa del Mundo 2026. Gestiona tus predicciones, ficha en el Draft exclusivo y compite con tus amigos.
+                  </p>
+                </div>
+                
+                {/* Score Widget */}
+                <div className="flex items-center gap-4 bg-slate-900/60 border border-slate-800/80 p-4 rounded-2xl backdrop-blur-sm shrink-0 self-start md:self-auto">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-amber-550/10">
+                    🏆
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tu Puntuación</p>
+                    <p className="text-xl font-extrabold text-white font-mono">{myMemberInfo?.totalPoints || 0} <span className="text-xs text-slate-400 font-sans font-medium">pts</span></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Guía de Pestañas */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-indigo-400" />
+                Guía de Secciones
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                {/* Calendario */}
+                <div 
+                  onClick={() => setActiveTab('matches')}
+                  className="glass-panel p-5 rounded-2xl border border-slate-805 hover:border-mexico-green/40 bg-slate-900/30 hover:bg-slate-900/50 cursor-pointer transition-all duration-300 group flex flex-col justify-between h-48"
+                >
+                  <div>
+                    <div className="h-10 w-10 rounded-xl bg-mexico-green/10 border border-mexico-green/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Calendar className="h-5 w-5 text-mexico-green" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-200 mt-3 group-hover:text-emerald-400 transition-colors">Calendario</h4>
+                    <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed">
+                      Pronostica todos los partidos del Mundial. Puedes guardar tus predicciones hasta 15 minutos antes de cada pitido inicial.
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 group-hover:text-emerald-405 transition-colors mt-2">
+                    Ver partidos <ChevronRight className="h-3 w-3" />
+                  </span>
+                </div>
+
+                {/* Clasificación */}
+                <div 
+                  onClick={() => setActiveTab('standings')}
+                  className="glass-panel p-5 rounded-2xl border border-slate-805 hover:border-usa-blue/40 bg-slate-900/30 hover:bg-slate-900/50 cursor-pointer transition-all duration-300 group flex flex-col justify-between h-48"
+                >
+                  <div>
+                    <div className="h-10 w-10 rounded-xl bg-usa-blue/10 border border-usa-blue/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Trophy className="h-5 w-5 text-usa-blue-light" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-200 mt-3 group-hover:text-blue-400 transition-colors">Clasificación</h4>
+                    <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed">
+                      Mira la tabla general en vivo. Compara tus puntos con tus amigos de sala y revisa sus estrategias del Draft en tiempo real.
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 group-hover:text-blue-405 transition-colors mt-2">
+                    Ver posiciones <ChevronRight className="h-3 w-3" />
+                  </span>
+                </div>
+
+                {/* Sala de Draft */}
+                <div 
+                  onClick={() => setActiveTab('draft')}
+                  className="glass-panel p-5 rounded-2xl border border-slate-805 hover:border-canada-red/40 bg-slate-900/30 hover:bg-slate-900/50 cursor-pointer transition-all duration-300 group flex flex-col justify-between h-48"
+                >
+                  <div>
+                    <div className="h-10 w-10 rounded-xl bg-canada-red/10 border border-canada-red/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Sparkles className="h-5 w-5 text-canada-red-light" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-200 mt-3 group-hover:text-red-400 transition-colors">Sala de Draft</h4>
+                    <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed">
+                      ¡Fichajes exclusivos! Adquiere tu Selección, 2 Jugadores Estrella (sin repetir país) y una Selección Gloriosa (+3 pts por victoria).
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 group-hover:text-red-405 transition-colors mt-2">
+                    Ir al Draft <ChevronRight className="h-3 w-3" />
+                  </span>
+                </div>
+
+                {/* Simulador */}
+                <div 
+                  onClick={() => setActiveTab('simulador')}
+                  className="glass-panel p-5 rounded-2xl border border-slate-805 hover:border-emerald-550/40 bg-slate-900/30 hover:bg-slate-900/50 cursor-pointer transition-all duration-300 group flex flex-col justify-between h-48"
+                >
+                  <div>
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Activity className="h-5 w-5 text-emerald-400" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-200 mt-3 group-hover:text-emerald-400 transition-colors">Simulador</h4>
+                    <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed">
+                      Simula la fase de grupos y los cruces eliminatorios. Mira cómo avanza tu bracket ficticio y planifica tus predicciones reales.
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 group-hover:text-emerald-405 transition-colors mt-2">
+                    Simular mundial <ChevronRight className="h-3 w-3" />
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Partidos de Hoy / Fallback */}
+            <div className="space-y-4">
+              {(() => {
+                const todayStr = new Date(simulatedNow).toISOString().split('T')[0];
+                let displayedMatches = matches.filter(match => {
+                  const matchDate = new Date(match.kickoffTimestamp).toISOString().split('T')[0];
+                  return matchDate === todayStr;
+                });
+                
+                let isFallback = false;
+                if (displayedMatches.length === 0) {
+                  isFallback = true;
+                  displayedMatches = matches
+                    .filter(match => match.status !== 'FT')
+                    .sort((a, b) => new Date(a.kickoffTimestamp).getTime() - new Date(b.kickoffTimestamp).getTime())
+                    .slice(0, 3);
+                }
+
+                return (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800/60 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-indigo-400" />
+                        <h3 className="text-lg font-bold text-slate-200">
+                          {isFallback ? 'Próximos Partidos Destacados' : 'Partidos de Hoy'}
+                        </h3>
+                        {displayedMatches.some(m => m.status === 'LIVE') && (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-red-505 inline-block animate-ping" />
+                            En Vivo
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-slate-400 font-medium">
+                        Predicciones hasta <strong className="text-amber-400">15 min antes</strong> de iniciar
+                      </span>
+                    </div>
+
+                    {displayedMatches.length === 0 ? (
+                      <div className="text-center py-12 text-slate-500 italic border border-dashed border-slate-800 rounded-2xl bg-slate-900/5">
+                        {matches.length === 0 
+                          ? "No se encontraron partidos. Lanza el cron de sincronización para cargarlos." 
+                          : "No hay más partidos programados en el torneo."}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        {displayedMatches.map(match => {
+                          const locked = isMatchLocked(match.kickoffTimestamp, match.status);
+                          const timeStatus = getMatchTimeStatus(match.kickoffTimestamp, match.status);
+                          const isLive = match.status === 'LIVE';
+
+                          return (
+                            <MatchCard 
+                              key={match.apiId} 
+                              match={match} 
+                              locked={locked} 
+                              timeStatus={timeStatus} 
+                              isLive={isLive}
+                              onSavePrediction={handleSavePrediction}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </section>
+        )}
+
         {/* TAB: MATCHES */}
         {activeTab === 'matches' && (
           <section className="flex-1 flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <h2 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight">Calendario de Partidos</h2>
               <p className="text-slate-400 text-sm">
-                Guarda tus predicciones. Los partidos se bloquean automáticamente <strong className="text-amber-400">1 hora antes</strong> del pitido inicial.
+                Guarda tus predicciones. Los partidos se bloquean automáticamente <strong className="text-amber-400">15 minutos antes</strong> del pitido inicial.
               </p>
             </div>
 
@@ -2820,6 +3025,16 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
 
       {/* Bottom Navigation for Mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-lg border-t border-slate-850 z-40 flex items-center justify-around py-3 px-4 shadow-black/80 shadow-2xl">
+        <button
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center gap-1 text-center transition-all ${
+            activeTab === 'home' ? 'text-indigo-400' : 'text-slate-400'
+          }`}
+        >
+          <Home className="h-5 w-5" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider">Inicio</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('matches')}
           className={`flex flex-col items-center gap-1 text-center transition-all ${
