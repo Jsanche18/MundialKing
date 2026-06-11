@@ -20,7 +20,9 @@ import {
   RotateCcw,
   Award,
   Edit2,
-  CheckCircle2
+  CheckCircle2,
+  PlusCircle,
+  X
 } from 'lucide-react';
 import useSWR from 'swr';
 import { motion } from 'framer-motion';
@@ -119,6 +121,15 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
   
   // Notification banner state
   const [notification, setNotification] = useState<{message: string; type: 'success' | 'error'} | null>(null);
+
+  // Group Join/Create Modal States
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [groupModalTab, setGroupModalTab] = useState<'join' | 'create'>('join');
+  const [modalGroupName, setModalGroupName] = useState('');
+  const [modalInviteCode, setModalInviteCode] = useState('');
+  const [modalGroupPassword, setModalGroupPassword] = useState('');
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   // Draft section states
   const [playerSearchQuery, setPlayerSearchQuery] = useState('');
@@ -348,6 +359,104 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       setNotification({ message: err.message || "Error al cargar datos del servidor.", type: 'error' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleModalJoinGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError('');
+    if (!modalInviteCode.trim()) {
+      setModalError('Por favor, introduce el código de invitación.');
+      return;
+    }
+
+    try {
+      setModalLoading(true);
+      const res = await fetch('/api/groups/join', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Id': currentUser.id
+        },
+        body: JSON.stringify({ inviteCode: modalInviteCode.trim(), password: modalGroupPassword })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setModalError(data.error || 'Error al unirse al grupo.');
+        return;
+      }
+
+      // Close modal & reset fields
+      setShowGroupModal(false);
+      setModalInviteCode('');
+      setModalGroupPassword('');
+      
+      // Update active group and show toast
+      const joinedGroupId = data.group.id;
+      onGroupIdChange?.(joinedGroupId);
+      
+      // Reload userGroups & data
+      const groupsRes = await fetch(`/api/groups`, { headers: { 'X-User-Id': currentUser.id } });
+      if (groupsRes.ok) {
+        const groupsData = await groupsRes.json();
+        setUserGroups(groupsData);
+      }
+      
+      setNotification({ message: `Te has unido a "${data.group.name}" con éxito.`, type: 'success' });
+    } catch (err) {
+      setModalError('Error de red al unirse al grupo.');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleModalCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError('');
+    if (!modalGroupName.trim()) {
+      setModalError('Por favor, escribe un nombre para el grupo.');
+      return;
+    }
+
+    try {
+      setModalLoading(true);
+      const res = await fetch('/api/groups/create', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Id': currentUser.id
+        },
+        body: JSON.stringify({ name: modalGroupName.trim(), password: modalGroupPassword })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setModalError(data.error || 'Error al crear el grupo.');
+        return;
+      }
+
+      // Close modal & reset fields
+      setShowGroupModal(false);
+      setModalGroupName('');
+      setModalGroupPassword('');
+
+      // Update active group and show toast
+      const createdGroupId = data.group.id;
+      onGroupIdChange?.(createdGroupId);
+
+      // Reload userGroups & data
+      const groupsRes = await fetch(`/api/groups`, { headers: { 'X-User-Id': currentUser.id } });
+      if (groupsRes.ok) {
+        const groupsData = await groupsRes.json();
+        setUserGroups(groupsData);
+      }
+
+      setNotification({ message: `Grupo "${data.group.name}" creado con éxito. Código: ${data.group.inviteCode}`, type: 'success' });
+    } catch (err) {
+      setModalError('Error de red al crear el grupo.');
+    } finally {
+      setModalLoading(false);
     }
   };
 
@@ -838,7 +947,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-slate-105 wc2026-bg">
         <div className="h-10 w-10 border-4 border-mexico-green border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm font-semibold tracking-wider uppercase text-slate-400">Cargando base de datos real...</p>
+        <p className="text-sm font-semibold tracking-wider uppercase text-slate-400">Cargando...</p>
       </div>
     );
   }
@@ -875,19 +984,54 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
           </div>
 
           {/* Selector de Grupo */}
-          <div className="mb-6 bg-slate-900/30 p-3 rounded-2xl border border-slate-800/60">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1 block mb-1.5">Grupo Activo</label>
-            <select
-              value={groupId}
-              onChange={(e) => onGroupIdChange?.(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800/80 focus:border-mexico-green rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none transition-all duration-200 cursor-pointer"
+          <div className="mb-6 space-y-2.5">
+            <div className="flex items-center justify-between pl-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Mis Salas</label>
+              {userGroups.length > 0 && (
+                <span className="text-[9px] bg-slate-800/80 text-slate-300 px-1.5 py-0.5 rounded-full border border-slate-700/60 font-bold">
+                  {userGroups.length}
+                </span>
+              )}
+            </div>
+            
+            <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+              {userGroups.map(g => {
+                const isActive = g.id === groupId;
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => onGroupIdChange?.(g.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-all duration-200 border group ${
+                      isActive
+                        ? 'bg-gradient-to-r from-slate-900 to-slate-900/60 border-mexico-green/60 text-slate-100 font-bold shadow-md shadow-mexico-green/5'
+                        : 'bg-slate-950/20 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 hover:border-slate-700/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
+                      <span className="truncate">{g.name}</span>
+                    </div>
+                    {isActive && (
+                      <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded font-semibold shrink-0 uppercase tracking-widest border border-emerald-500/25">
+                        Activo
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => {
+                setGroupModalTab('join');
+                setModalError('');
+                setShowGroupModal(true);
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-slate-700 hover:border-mexico-green/50 bg-slate-900/10 hover:bg-mexico-green/5 rounded-xl text-xs font-bold text-slate-400 hover:text-emerald-400 transition-all duration-200 active:scale-[0.98]"
             >
-              {userGroups.map(g => (
-                <option key={g.id} value={g.id} className="bg-slate-955 text-slate-200">
-                  {g.name}
-                </option>
-              ))}
-            </select>
+              <PlusCircle className="h-4 w-4 shrink-0" />
+              <span>Unirse / Crear Sala</span>
+            </button>
           </div>
 
           {/* Nav Items */}
@@ -993,12 +1137,12 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
           </div>
           
           {/* Selector de Grupo Móvil */}
-          <div className="flex items-center justify-between gap-3 bg-slate-900/30 p-2.5 rounded-xl border border-slate-800/60">
+          <div className="flex items-center justify-between gap-2 bg-slate-900/30 p-2 rounded-xl border border-slate-800/60">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 pl-1">Grupo:</span>
             <select
               value={groupId}
               onChange={(e) => onGroupIdChange?.(e.target.value)}
-              className="bg-slate-955 border border-slate-800 focus:border-mexico-green rounded-lg py-1.5 px-2.5 text-xs text-slate-250 focus:outline-none cursor-pointer flex-1 text-right"
+              className="bg-slate-955 border border-slate-800 focus:border-mexico-green rounded-lg py-1.5 px-2 text-xs text-slate-250 focus:outline-none cursor-pointer flex-1 text-right"
             >
               {userGroups.map(g => (
                 <option key={g.id} value={g.id} className="bg-slate-955 text-slate-200">
@@ -1006,6 +1150,17 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                 </option>
               ))}
             </select>
+            <button
+              onClick={() => {
+                setGroupModalTab('join');
+                setModalError('');
+                setShowGroupModal(true);
+              }}
+              className="p-1.5 rounded-lg border border-slate-850 hover:border-mexico-green/45 hover:bg-slate-800/40 text-slate-400 hover:text-emerald-400 shrink-0 transition-all active:scale-95"
+              title="Unirse o crear sala"
+            >
+              <PlusCircle className="h-4 w-4" />
+            </button>
           </div>
         </header>
 
@@ -2118,6 +2273,136 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
           <span className="text-[10px] font-semibold uppercase tracking-wider">Simular</span>
         </button>
       </nav>
+
+      {/* Modal para Unirse / Crear Sala */}
+      {showGroupModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="glass-panel w-full max-w-md p-6 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden bg-slate-900/95 animate-fadeIn">
+            {/* Background glowing gradients */}
+            <div className="absolute -top-20 -right-20 h-40 w-40 bg-mexico-green/10 rounded-full blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 h-40 w-40 bg-usa-blue/10 rounded-full blur-3xl" />
+
+            <div className="flex items-center justify-between mb-6 pb-2 border-b border-slate-800/60 z-10 relative">
+              <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">Gestión de Salas</h3>
+              <button
+                onClick={() => {
+                  setShowGroupModal(false);
+                  setModalError('');
+                }}
+                className="p-1.5 rounded-lg border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-slate-800/60 pb-3 mb-5 z-10 relative">
+              <button
+                onClick={() => {
+                  setGroupModalTab('join');
+                  setModalError('');
+                }}
+                className={`flex-1 text-center pb-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  groupModalTab === 'join'
+                    ? 'text-emerald-450 border-b-2 border-mexico-green'
+                    : 'text-slate-500 hover:text-slate-400'
+                }`}
+              >
+                Unirse a Sala
+              </button>
+              <button
+                onClick={() => {
+                  setGroupModalTab('create');
+                  setModalError('');
+                }}
+                className={`flex-1 text-center pb-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  groupModalTab === 'create'
+                    ? 'text-emerald-450 border-b-2 border-mexico-green'
+                    : 'text-slate-500 hover:text-slate-400'
+                }`}
+              >
+                Crear Sala
+              </button>
+            </div>
+
+            {/* Error banner inside modal */}
+            {modalError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-550/20 rounded-xl text-red-400 text-xs flex items-center gap-2">
+                <span className="h-1.5 w-1.5 bg-red-400 rounded-full shrink-0" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            {groupModalTab === 'join' ? (
+              <form onSubmit={handleModalJoinGroup} className="space-y-4 z-10 relative">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Código de Invitación</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="MUNDIAL2026-CODE"
+                    value={modalInviteCode}
+                    onChange={(e) => setModalInviteCode(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-slate-800 focus:border-mexico-green rounded-xl py-2 px-3 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200"
+                    disabled={modalLoading}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Contraseña (si aplica)</label>
+                  <input
+                    type="password"
+                    placeholder="Contraseña de la sala"
+                    value={modalGroupPassword}
+                    onChange={(e) => setModalGroupPassword(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-slate-800 focus:border-mexico-green rounded-xl py-2 px-3 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200"
+                    disabled={modalLoading}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={modalLoading}
+                  className="w-full bg-gradient-to-r from-mexico-green to-emerald-600 hover:brightness-110 active:scale-[0.98] transition-all text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow shadow-emerald-950/40 disabled:opacity-50 disabled:cursor-not-allowed mt-2 cursor-pointer"
+                >
+                  {modalLoading ? 'Uniéndose...' : 'Unirse al Grupo'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleModalCreateGroup} className="space-y-4 z-10 relative">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Nombre del Grupo</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Quiniela Mundialista"
+                    value={modalGroupName}
+                    onChange={(e) => setModalGroupName(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-slate-800 focus:border-mexico-green rounded-xl py-2 px-3 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200"
+                    disabled={modalLoading}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Contraseña (Opcional)</label>
+                  <input
+                    type="password"
+                    placeholder="Contraseña opcional"
+                    value={modalGroupPassword}
+                    onChange={(e) => setModalGroupPassword(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-slate-800 focus:border-mexico-green rounded-xl py-2 px-3 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200"
+                    disabled={modalLoading}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={modalLoading}
+                  className="w-full bg-gradient-to-r from-mexico-green to-emerald-600 hover:brightness-110 active:scale-[0.98] transition-all text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow shadow-emerald-950/40 disabled:opacity-50 disabled:cursor-not-allowed mt-2 cursor-pointer"
+                >
+                  {modalLoading ? 'Creando...' : 'Crear Grupo'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );
