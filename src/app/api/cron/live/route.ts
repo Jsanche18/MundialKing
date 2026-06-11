@@ -16,9 +16,9 @@ export async function GET(req: Request) {
     const simulateRun = searchParams.get("simulate") === "true";
 
     // 2. Comprobar si hay partidos activos en PostgreSQL para proteger la cuota
-    // Ventana de juego activa: status != "FT" y kickoff <= ahora y kickoff >= ahora - 120 minutos (2 horas)
+    // Ventana de juego activa: status != "FT" y kickoff <= ahora y kickoff >= ahora - 300 minutos (5 horas)
     const now = new Date();
-    const windowStart = new Date(now.getTime() - 120 * 60 * 1000);
+    const windowStart = new Date(now.getTime() - 300 * 60 * 1000);
 
     const activeMatchesInDb = await db.match.findMany({
       where: {
