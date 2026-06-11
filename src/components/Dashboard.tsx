@@ -322,7 +322,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
   };
 
   useEffect(() => {
-    loadDashboardData();
+    loadDashboardData(true);
   }, [groupId]);
 
   useEffect(() => {
@@ -332,9 +332,11 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
     }
   }, [notification]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (showSpinner = false) => {
     try {
-      setLoading(true);
+      if (showSpinner) {
+        setLoading(true);
+      }
       
       // Fetch matches, teams, players, group standings, and user groups in parallel
       const [matchesRes, teamsRes, playersRes, standingsRes, groupsRes] = await Promise.all([
@@ -452,13 +454,6 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       const joinedGroupId = data.group.id;
       onGroupIdChange?.(joinedGroupId);
       
-      // Reload userGroups & data
-      const groupsRes = await fetch(`/api/groups`, { headers: { 'X-User-Id': currentUser.id } });
-      if (groupsRes.ok) {
-        const groupsData = await groupsRes.json();
-        setUserGroups(groupsData);
-      }
-      
       setNotification({ message: `Te has unido a "${data.group.name}" con éxito.`, type: 'success' });
     } catch (err) {
       setModalError('Error de red al unirse al grupo.');
@@ -500,13 +495,6 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       // Update active group and show toast
       const createdGroupId = data.group.id;
       onGroupIdChange?.(createdGroupId);
-
-      // Reload userGroups & data
-      const groupsRes = await fetch(`/api/groups`, { headers: { 'X-User-Id': currentUser.id } });
-      if (groupsRes.ok) {
-        const groupsData = await groupsRes.json();
-        setUserGroups(groupsData);
-      }
 
       setNotification({ message: `Grupo "${data.group.name}" creado con éxito. Código: ${data.group.inviteCode}`, type: 'success' });
     } catch (err) {
@@ -567,6 +555,24 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       return;
     }
 
+    const previousMatches = [...matches];
+
+    // Optimistic Update
+    setMatches(prev => prev.map(m => {
+      if (m.apiId === matchId) {
+        return {
+          ...m,
+          userPrediction: (homeGoals !== null && awayGoals !== null) ? { homeGoals, awayGoals } : null
+        };
+      }
+      return m;
+    }));
+
+    setNotification({
+      message: `Predicción guardada para el ${targetMatch.homeTeam.name} vs ${targetMatch.awayTeam.name}`,
+      type: 'success'
+    });
+
     try {
       const res = await fetch('/api/predictions', {
         method: 'PUT',
@@ -579,18 +585,15 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
 
       const data = await res.json();
       if (!res.ok) {
+        setMatches(previousMatches);
         setNotification({ message: data.error || "Error al guardar la predicción.", type: 'error' });
         return;
       }
-
-      setNotification({
-        message: `Predicción guardada para el ${targetMatch.homeTeam.name} vs ${targetMatch.awayTeam.name}`,
-        type: 'success'
-      });
       
-      // Refresh dashboard info
-      loadDashboardData();
+      // Refresh in background without spinner
+      loadDashboardData(false);
     } catch (err) {
+      setMatches(previousMatches);
       setNotification({ message: "Error de red al guardar predicción.", type: 'error' });
     }
   };
@@ -604,6 +607,38 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       return; // Taken
     }
 
+    const previousTeams = [...teams];
+    const previousMembers = [...members];
+    const isCurrentChoice = selectedTeam.draftedBy?.userId === currentUser.id;
+
+    // Optimistic Update
+    setTeams(prev => prev.map(t => {
+      if (t.apiId === teamId) {
+        return {
+          ...t,
+          draftedBy: isCurrentChoice ? null : { userId: currentUser.id, userName: currentUser.name }
+        };
+      }
+      return t;
+    }));
+    setMembers(prev => prev.map(m => {
+      if (m.userId === currentUser.id) {
+        return {
+          ...m,
+          selectedTeamId: isCurrentChoice ? null : teamId,
+          selectedTeamName: isCurrentChoice ? null : selectedTeam.name
+        };
+      }
+      return m;
+    }));
+
+    setNotification({
+      message: isCurrentChoice
+        ? "Has liberado tu selección de equipo." 
+        : `Has fichado a ${selectedTeam.name} como tu equipo exclusivo.`,
+      type: 'success'
+    });
+
     try {
       const res = await fetch('/api/draft/select', {
         method: 'POST',
@@ -616,19 +651,16 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
 
       const data = await res.json();
       if (!res.ok) {
+        setTeams(previousTeams);
+        setMembers(previousMembers);
         setNotification({ message: data.error || "Error en la selección del equipo.", type: 'error' });
         return;
       }
 
-      setNotification({
-        message: selectedTeam.draftedBy?.userId === currentUser.id
-          ? "Has liberado tu selección de equipo." 
-          : `Has fichado a ${selectedTeam.name} como tu equipo exclusivo.`,
-        type: 'success'
-      });
-
-      loadDashboardData();
+      loadDashboardData(false);
     } catch (err) {
+      setTeams(previousTeams);
+      setMembers(previousMembers);
       setNotification({ message: "Error de red al seleccionar equipo.", type: 'error' });
     }
   };
@@ -642,6 +674,80 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       return; // Taken
     }
 
+    const myMember = members.find(m => m.userId === currentUser.id);
+    if (!myMember) return;
+
+    const isSlot1 = myMember.selectedPlayerId === playerId;
+    const isSlot2 = myMember.selectedPlayer2Id === playerId;
+    const isReleasing = isSlot1 || isSlot2;
+
+    if (!isReleasing && myMember.selectedPlayerId && myMember.selectedPlayer2Id) {
+      setNotification({ message: "Ya has fichado al máximo de 2 jugadores. Libera uno primero.", type: 'error' });
+      return;
+    }
+
+    // Check if team is repeated
+    if (!isReleasing) {
+      let existingTeamId: number | null = null;
+      if (myMember.selectedPlayerId) {
+        const p1 = players.find(p => p.apiId === myMember.selectedPlayerId);
+        if (p1) {
+          const t1 = teams.find(t => t.name === p1.teamName);
+          if (t1) existingTeamId = t1.apiId;
+        }
+      } else if (myMember.selectedPlayer2Id) {
+        const p2 = players.find(p => p.apiId === myMember.selectedPlayer2Id);
+        if (p2) {
+          const t2 = teams.find(t => t.name === p2.teamName);
+          if (t2) existingTeamId = t2.apiId;
+        }
+      }
+      const newPlayerTeam = teams.find(t => t.name === selectedPlayer.teamName);
+      if (existingTeamId !== null && newPlayerTeam && existingTeamId === newPlayerTeam.apiId) {
+        setNotification({ message: "No puedes fichar a dos jugadores de la misma selección.", type: 'error' });
+        return;
+      }
+    }
+
+    const previousPlayers = [...players];
+    const previousMembers = [...members];
+
+    // Optimistic Update
+    setPlayers(prev => prev.map(p => {
+      if (p.apiId === playerId) {
+        return {
+          ...p,
+          draftedBy: isReleasing ? null : { userId: currentUser.id, userName: currentUser.name }
+        };
+      }
+      return p;
+    }));
+    setMembers(prev => prev.map(m => {
+      if (m.userId === currentUser.id) {
+        if (isSlot1) {
+          return { ...m, selectedPlayerId: null, selectedPlayerName: null };
+        } else if (isSlot2) {
+          return { ...m, selectedPlayer2Id: null, selectedPlayer2Name: null };
+        } else {
+          // Assign to empty slot
+          if (!m.selectedPlayerId) {
+            return { ...m, selectedPlayerId: playerId, selectedPlayerName: selectedPlayer.name };
+          } else {
+            return { ...m, selectedPlayer2Id: playerId, selectedPlayer2Name: selectedPlayer.name };
+          }
+        }
+      }
+      return m;
+    }));
+
+    setNotification({
+      message: isReleasing
+        ? "Has liberado tu selección de jugador." 
+        : `Has fichado a ${selectedPlayer.name} para tu plantilla exclusiva.`,
+      type: 'success'
+    });
+    setPlayerSearchQuery('');
+
     try {
       const res = await fetch('/api/draft/select', {
         method: 'POST',
@@ -654,20 +760,16 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
 
       const data = await res.json();
       if (!res.ok) {
+        setPlayers(previousPlayers);
+        setMembers(previousMembers);
         setNotification({ message: data.error || "Error al fichar al jugador.", type: 'error' });
         return;
       }
 
-      setNotification({
-        message: selectedPlayer.draftedBy?.userId === currentUser.id
-          ? "Has liberado tu selección de jugador." 
-          : `Has fichado a ${selectedPlayer.name} para tu plantilla exclusiva.`,
-        type: 'success'
-      });
-
-      setPlayerSearchQuery('');
-      loadDashboardData();
+      loadDashboardData(false);
     } catch (err) {
+      setPlayers(previousPlayers);
+      setMembers(previousMembers);
       setNotification({ message: "Error de red al seleccionar jugador.", type: 'error' });
     }
   };
@@ -681,6 +783,38 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
       return; // Taken
     }
 
+    const previousTeams = [...teams];
+    const previousMembers = [...members];
+    const isCurrentChoice = selectedTeam.gloriousDraftedBy?.userId === currentUser.id;
+
+    // Optimistic Update
+    setTeams(prev => prev.map(t => {
+      if (t.apiId === teamId) {
+        return {
+          ...t,
+          gloriousDraftedBy: isCurrentChoice ? null : { userId: currentUser.id, userName: currentUser.name }
+        };
+      }
+      return t;
+    }));
+    setMembers(prev => prev.map(m => {
+      if (m.userId === currentUser.id) {
+        return {
+          ...m,
+          selectedWeakTeamId: isCurrentChoice ? null : teamId,
+          selectedWeakTeamName: isCurrentChoice ? null : selectedTeam.name
+        };
+      }
+      return m;
+    }));
+
+    setNotification({
+      message: isCurrentChoice
+        ? "Has liberado tu Selección Gloriosa." 
+        : `Has fichado a ${selectedTeam.name} como tu Selección Gloriosa (+3 pts por victoria).`,
+      type: 'success'
+    });
+
     try {
       const res = await fetch('/api/draft/select', {
         method: 'POST',
@@ -693,25 +827,43 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
 
       const data = await res.json();
       if (!res.ok) {
+        setTeams(previousTeams);
+        setMembers(previousMembers);
         setNotification({ message: data.error || "Error en la selección de la selección gloriosa.", type: 'error' });
         return;
       }
 
-      setNotification({
-        message: selectedTeam.gloriousDraftedBy?.userId === currentUser.id
-          ? "Has liberado tu Selección Gloriosa." 
-          : `Has fichado a ${selectedTeam.name} como tu Selección Gloriosa (+3 pts por victoria).`,
-        type: 'success'
-      });
-
-      loadDashboardData();
+      loadDashboardData(false);
     } catch (err) {
+      setTeams(previousTeams);
+      setMembers(previousMembers);
       setNotification({ message: "Error de red al seleccionar selección gloriosa.", type: 'error' });
     }
   };
 
   // Draft Selection Handler - Top Scorer Predict
   const handleSelectTopScorer = async (player: any) => {
+    const previousMembers = [...members];
+
+    // Optimistic Update
+    setMembers(prev => prev.map(m => {
+      if (m.userId === currentUser.id) {
+        return {
+          ...m,
+          predictedTopScorerId: player.apiId,
+          predictedTopScorerName: player.name
+        };
+      }
+      return m;
+    }));
+
+    setNotification({
+      message: `Tu predicción de Bota de Oro para ${player.name} ha sido guardada.`,
+      type: 'success'
+    });
+    setShowTopScorerResults(false);
+    setSelectedTopScorerQuery('');
+
     try {
       const res = await fetch('/api/draft/select', {
         method: 'POST',
@@ -724,18 +876,14 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
 
       const data = await res.json();
       if (!res.ok) {
+        setMembers(previousMembers);
         setNotification({ message: data.error || "Error al guardar Bota de Oro.", type: 'error' });
         return;
       }
 
-      setNotification({
-        message: `Tu predicción de Bota de Oro para ${player.name} ha sido guardada.`,
-        type: 'success'
-      });
-      setShowTopScorerResults(false);
-      setSelectedTopScorerQuery('');
-      loadDashboardData();
+      loadDashboardData(false);
     } catch (err) {
+      setMembers(previousMembers);
       setNotification({ message: "Error de red al guardar Bota de Oro.", type: 'error' });
     }
   };
@@ -1057,9 +1205,11 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
   const myMemberInfo = members.find(m => m.userId === currentUser.id);
 
 
-  if (loading) {
+  const hasInitialData = matches.length > 0 && teams.length > 0;
+
+  if (loading && !hasInitialData) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-slate-105 wc2026-bg">
+      <div className="min-h-screen flex flex-col items-center justify-center text-slate-100 wc2026-bg">
         <div className="h-10 w-10 border-4 border-mexico-green border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-sm font-semibold tracking-wider uppercase text-slate-400">Cargando...</p>
       </div>
@@ -1068,6 +1218,10 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row text-slate-100">
+      {/* Top Loading Bar */}
+      {loading && (
+        <div className="fixed top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-mexico-green via-emerald-400 to-usa-blue z-[100] animate-pulse" />
+      )}
       
       {/* Toast Notification */}
       {notification && (
