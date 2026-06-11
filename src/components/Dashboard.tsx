@@ -24,7 +24,8 @@ import {
   Edit2,
   CheckCircle2,
   PlusCircle,
-  X
+  X,
+  Copy
 } from 'lucide-react';
 import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1062,25 +1063,39 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
               {userGroups.map(g => {
                 const isActive = g.id === groupId;
                 return (
-                  <button
-                    key={g.id}
-                    onClick={() => onGroupIdChange?.(g.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-all duration-200 border group ${
-                      isActive
-                        ? 'bg-gradient-to-r from-slate-900 to-slate-900/60 border-mexico-green/60 text-slate-100 font-bold shadow-md shadow-mexico-green/5'
-                        : 'bg-slate-950/20 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 hover:border-slate-700/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
-                      <span className="truncate">{g.name}</span>
-                    </div>
-                    {isActive && (
-                      <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded font-semibold shrink-0 uppercase tracking-widest border border-emerald-500/25">
-                        Activo
-                      </span>
+                  <div key={g.id} className="flex flex-col gap-1">
+                    <button
+                      onClick={() => onGroupIdChange?.(g.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-all duration-200 border group ${
+                        isActive
+                          ? 'bg-gradient-to-r from-slate-900 to-slate-900/60 border-mexico-green/60 text-slate-100 font-bold shadow-md shadow-mexico-green/5'
+                          : 'bg-slate-950/20 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 hover:border-slate-700/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
+                        <span className="truncate">{g.name}</span>
+                      </div>
+                      {isActive && (
+                        <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded font-semibold shrink-0 uppercase tracking-widest border border-emerald-500/25">
+                          Activo
+                        </span>
+                      )}
+                    </button>
+                    {isActive && g.inviteCode && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(g.inviteCode);
+                          setNotification({ message: `Código "${g.inviteCode}" copiado al portapapeles.`, type: 'success' });
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all duration-200 group/copy"
+                        title="Copiar código de invitación"
+                      >
+                        <span className="text-[10px] font-mono text-emerald-400 tracking-widest font-bold">{g.inviteCode}</span>
+                        <Copy className="h-3 w-3 text-slate-500 group-hover/copy:text-emerald-400 transition-colors shrink-0" />
+                      </button>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -2622,10 +2637,10 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                   <input
                     type="text"
                     required
-                    placeholder="MUNDIAL2026-CODE"
+                    placeholder="MUNDIAL-XXXX"
                     value={modalInviteCode}
-                    onChange={(e) => setModalInviteCode(e.target.value)}
-                    className="w-full bg-slate-950/80 border border-slate-800 focus:border-mexico-green rounded-xl py-2 px-3 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200"
+                    onChange={(e) => setModalInviteCode(e.target.value.toUpperCase())}
+                    className="w-full bg-slate-950/80 border border-slate-800 focus:border-mexico-green rounded-xl py-2 px-3 text-slate-100 placeholder:text-slate-650 focus:outline-none text-xs transition-all duration-200 font-mono tracking-widest uppercase"
                     disabled={modalLoading}
                   />
                 </div>
