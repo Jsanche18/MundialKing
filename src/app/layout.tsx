@@ -1,5 +1,6 @@
 import { Inter, Outfit } from 'next/font/google'
 import './globals.css'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -25,6 +26,7 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${outfit.variable} scroll-smooth`}>
       <body className="wc2026-bg min-h-screen text-slate-100 font-sans antialiased">
         {children}
+        <SpeedInsights />
       </body>
     </html>
   )
