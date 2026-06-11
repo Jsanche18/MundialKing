@@ -240,8 +240,14 @@ export default function Home() {
         currentUser={currentUser} 
         groupId={currentGroupId}
         onGroupIdChange={(newGroupId) => {
-          setCurrentGroupId(newGroupId);
-          localStorage.setItem('wc_user_groupId', newGroupId);
+          if (!newGroupId) {
+            setCurrentGroupId(null);
+            localStorage.removeItem('wc_user_groupId');
+            setView('onboarding');
+          } else {
+            setCurrentGroupId(newGroupId);
+            localStorage.setItem('wc_user_groupId', newGroupId);
+          }
         }}
         onLogout={handleLogout} 
       />

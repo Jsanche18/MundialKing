@@ -373,6 +373,51 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
     }
   };
 
+  const handleLeaveGroup = async (targetGroupId: string, targetGroupName: string) => {
+    const confirmed = window.confirm(`¿Estás seguro de que quieres salir del grupo "${targetGroupName}"? Se eliminarán todas tus predicciones y selecciones del draft en este grupo.`);
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch('/api/groups/leave', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': currentUser.id
+        },
+        body: JSON.stringify({ groupId: targetGroupId })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo salir del grupo.");
+      }
+
+      setNotification({ message: `Has salido del grupo "${targetGroupName}" correctamente.`, type: 'success' });
+
+      // Obtener la lista actualizada de grupos
+      const groupsRes = await fetch(`/api/groups`, { headers: { 'X-User-Id': currentUser.id } });
+      if (groupsRes.ok) {
+        const groupsData = await groupsRes.json();
+        setUserGroups(groupsData);
+
+        if (groupsData.length === 0) {
+          // Si ya no quedan grupos, redirigir a onboarding
+          onGroupIdChange?.("");
+        } else {
+          // Si quedan grupos, activar el primero de la lista
+          onGroupIdChange?.(groupsData[0].id);
+        }
+      } else {
+        onGroupIdChange?.("");
+      }
+    } catch (err: any) {
+      setNotification({ message: err.message || "Error al salir del grupo.", type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleModalJoinGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalError('');
@@ -1087,17 +1132,26 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                       )}
                     </button>
                     {isActive && g.inviteCode && (
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(g.inviteCode);
-                          setNotification({ message: `Código "${g.inviteCode}" copiado al portapapeles.`, type: 'success' });
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all duration-200 group/copy"
-                        title="Copiar código de invitación"
-                      >
-                        <span className="text-[10px] font-mono text-emerald-400 tracking-widest font-bold">{g.inviteCode}</span>
-                        <Copy className="h-3 w-3 text-slate-500 group-hover/copy:text-emerald-400 transition-colors shrink-0" />
-                      </button>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(g.inviteCode);
+                            setNotification({ message: `Código "${g.inviteCode}" copiado al portapapeles.`, type: 'success' });
+                          }}
+                          className="flex-1 flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all duration-200 group/copy"
+                          title="Copiar código de invitación"
+                        >
+                          <span className="text-[10px] font-mono text-emerald-400 tracking-widest font-bold">{g.inviteCode}</span>
+                          <Copy className="h-3 w-3 text-slate-500 group-hover/copy:text-emerald-400 transition-colors shrink-0" />
+                        </button>
+                        <button
+                          onClick={() => handleLeaveGroup(g.id, g.name)}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-red-500/40 hover:bg-red-500/5 text-slate-500 hover:text-red-450 transition-all duration-205 flex items-center justify-center shrink-0 cursor-pointer"
+                          title="Salir del grupo"
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
