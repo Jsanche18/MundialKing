@@ -1600,25 +1600,33 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                               </div>
                               {/* Inputs */}
                               <div className="flex items-center gap-1.5 justify-center w-[20%]">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="9"
-                                  placeholder="-"
-                                  value={score.homeGoals !== null ? score.homeGoals : ''}
-                                  onChange={(e) => updateSimulatedScore(m.apiId, 'home', e.target.value.slice(0, 1))}
-                                  className="w-7 h-7 text-center bg-slate-950 border border-slate-800 rounded text-slate-100 font-bold focus:outline-none focus:border-emerald-500"
-                                />
-                                <span className="text-slate-600 font-bold">-</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="9"
-                                  placeholder="-"
-                                  value={score.awayGoals !== null ? score.awayGoals : ''}
-                                  onChange={(e) => updateSimulatedScore(m.apiId, 'away', e.target.value.slice(0, 1))}
-                                  className="w-7 h-7 text-center bg-slate-955 border border-slate-800 rounded text-slate-100 font-bold focus:outline-none focus:border-emerald-500"
-                                />
+                                 <select
+                                   value={score.homeGoals !== null ? String(score.homeGoals) : ''}
+                                   onChange={(e) => updateSimulatedScore(m.apiId, 'home', e.target.value)}
+                                   className="w-8 h-8 text-center bg-slate-950 border border-slate-850 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2"
+                                   style={{ textAlignLast: 'center' }}
+                                 >
+                                   <option value="" className="text-slate-505">-</option>
+                                   {Array.from({ length: 21 }, (_, i) => (
+                                     <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
+                                       {i}
+                                     </option>
+                                   ))}
+                                 </select>
+                                 <span className="text-slate-605 font-bold">-</span>
+                                 <select
+                                   value={score.awayGoals !== null ? String(score.awayGoals) : ''}
+                                   onChange={(e) => updateSimulatedScore(m.apiId, 'away', e.target.value)}
+                                   className="w-8 h-8 text-center bg-slate-950 border border-slate-855 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2"
+                                   style={{ textAlignLast: 'center' }}
+                                 >
+                                   <option value="" className="text-slate-505">-</option>
+                                   {Array.from({ length: 21 }, (_, i) => (
+                                     <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
+                                       {i}
+                                     </option>
+                                   ))}
+                                 </select>
                               </div>
                               {/* Away */}
                               <div className="flex items-center gap-2 justify-end w-[40%] text-right">
@@ -1888,16 +1896,20 @@ function BracketMatchCard({
               <span className="text-slate-500 italic truncate">{match.homeTeam.name}</span>
             )}
           </div>
-          <input
-            type="number"
+          <select
             disabled={!homeTeam || !awayTeam}
-            min="0"
-            max="9"
-            placeholder="-"
-            value={hg !== null ? hg : ''}
-            onChange={(e) => updateSimulatedScore(match.apiId, 'home', e.target.value.slice(0, 1))}
-            className="w-7 h-7 text-center bg-slate-900 border border-slate-800 rounded text-slate-100 font-bold focus:outline-none focus:border-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed"
-          />
+            value={hg !== null ? String(hg) : ''}
+            onChange={(e) => updateSimulatedScore(match.apiId, 'home', e.target.value)}
+            className="w-8 h-8 text-center bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2.5 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ textAlignLast: 'center' }}
+          >
+            <option value="" className="text-slate-500">-</option>
+            {Array.from({ length: 21 }, (_, i) => (
+              <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
+                {i}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Away Row */}
@@ -1914,16 +1926,20 @@ function BracketMatchCard({
               <span className="text-slate-500 italic truncate">{match.awayTeam.name}</span>
             )}
           </div>
-          <input
-            type="number"
+          <select
             disabled={!homeTeam || !awayTeam}
-            min="0"
-            max="9"
-            placeholder="-"
-            value={ag !== null ? ag : ''}
-            onChange={(e) => updateSimulatedScore(match.apiId, 'away', e.target.value.slice(0, 1))}
-            className="w-7 h-7 text-center bg-slate-900 border border-slate-800 rounded text-slate-100 font-bold focus:outline-none focus:border-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed"
-          />
+            value={ag !== null ? String(ag) : ''}
+            onChange={(e) => updateSimulatedScore(match.apiId, 'away', e.target.value)}
+            className="w-8 h-8 text-center bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg text-slate-100 font-extrabold text-xs focus:outline-none cursor-pointer appearance-none pl-2.5 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ textAlignLast: 'center' }}
+          >
+            <option value="" className="text-slate-500">-</option>
+            {Array.from({ length: 21 }, (_, i) => (
+              <option key={i} value={String(i)} className="bg-slate-955 text-slate-100">
+                {i}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -2136,27 +2152,35 @@ function MatchCard({ match, locked, timeStatus, isLive, onSavePrediction }: Matc
 
         {/* Inputs */}
         <div className="flex items-center gap-2">
-          <input
-            type="number"
+          <select
             disabled={locked}
-            min="0"
-            max="9"
-            placeholder="-"
             value={homeInput}
-            onChange={(e) => setHomeInput(e.target.value.slice(0, 1))}
-            className="w-10 h-8 text-center bg-slate-955 border border-slate-800 focus:border-emerald-500 rounded-lg text-slate-100 font-bold text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/30 disabled:opacity-40 disabled:bg-slate-950/60 disabled:cursor-not-allowed"
-          />
+            onChange={(e) => setHomeInput(e.target.value)}
+            className="w-12 h-9 text-center bg-slate-950 border border-slate-805 focus:border-emerald-500 rounded-xl text-slate-100 font-extrabold text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed appearance-none cursor-pointer flex items-center justify-center pl-3"
+            style={{ textAlignLast: 'center' }}
+          >
+            <option value="" className="text-slate-500">-</option>
+            {Array.from({ length: 21 }, (_, i) => (
+              <option key={i} value={String(i)} className="bg-slate-950 text-slate-100">
+                {i}
+              </option>
+            ))}
+          </select>
           <span className="text-slate-500 text-xs font-bold">-</span>
-          <input
-            type="number"
+          <select
             disabled={locked}
-            min="0"
-            max="9"
-            placeholder="-"
             value={awayInput}
-            onChange={(e) => setAwayInput(e.target.value.slice(0, 1))}
-            className="w-10 h-8 text-center bg-slate-955 border border-slate-800 focus:border-emerald-500 rounded-lg text-slate-100 font-bold text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/30 disabled:opacity-40 disabled:bg-slate-950/60 disabled:cursor-not-allowed"
-          />
+            onChange={(e) => setAwayInput(e.target.value)}
+            className="w-12 h-9 text-center bg-slate-950 border border-slate-805 focus:border-emerald-500 rounded-xl text-slate-100 font-extrabold text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed appearance-none cursor-pointer flex items-center justify-center pl-3"
+            style={{ textAlignLast: 'center' }}
+          >
+            <option value="" className="text-slate-500">-</option>
+            {Array.from({ length: 21 }, (_, i) => (
+              <option key={i} value={String(i)} className="bg-slate-950 text-slate-100">
+                {i}
+              </option>
+            ))}
+          </select>
           
           <button
             onClick={handleSave}
