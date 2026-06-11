@@ -1,4 +1,5 @@
 import { Inter, Outfit } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 const inter = Inter({
@@ -25,6 +26,7 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${outfit.variable} scroll-smooth`}>
       <body className="wc2026-bg min-h-screen text-slate-100 font-sans antialiased">
         {children}
+        <Analytics />
       </body>
     </html>
   )
