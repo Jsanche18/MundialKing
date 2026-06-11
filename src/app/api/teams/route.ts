@@ -28,6 +28,7 @@ export async function GET(req: Request) {
 
     const formattedTeams = teams.map(team => {
       const draftedByMember = members.find(m => m.selectedTeamId === team.apiId);
+      const gloriousDraftedByMember = members.find(m => m.selectedWeakTeamId === team.apiId);
       return {
         apiId: team.apiId,
         name: team.name,
@@ -36,6 +37,10 @@ export async function GET(req: Request) {
         draftedBy: draftedByMember ? {
           userId: draftedByMember.userId,
           userName: draftedByMember.user.name
+        } : null,
+        gloriousDraftedBy: gloriousDraftedByMember ? {
+          userId: gloriousDraftedByMember.userId,
+          userName: gloriousDraftedByMember.user.name
         } : null
       };
     });

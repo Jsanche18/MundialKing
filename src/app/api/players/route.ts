@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
     const formattedPlayers = players.map(player => {
       const team = teams.find(t => t.apiId === player.teamId);
-      const draftedByMember = members.find(m => m.selectedPlayerId === player.apiId);
+      const draftedByMember = members.find(m => m.selectedPlayerId === player.apiId || m.selectedPlayer2Id === player.apiId);
       
       return {
         apiId: player.apiId,

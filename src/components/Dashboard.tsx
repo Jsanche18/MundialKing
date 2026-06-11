@@ -616,6 +616,44 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
     }
   };
 
+  // Draft Selection Handler - Weak Team
+  const handleSelectWeakTeam = async (teamId: number) => {
+    const selectedTeam = teams.find(t => t.apiId === teamId);
+    if (!selectedTeam) return;
+
+    if (selectedTeam.gloriousDraftedBy && selectedTeam.gloriousDraftedBy.userId !== currentUser.id) {
+      return; // Taken
+    }
+
+    try {
+      const res = await fetch('/api/draft/select', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Id': currentUser.id
+        },
+        body: JSON.stringify({ type: 'weakTeam', id: teamId, groupId })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setNotification({ message: data.error || "Error en la selección de la selección gloriosa.", type: 'error' });
+        return;
+      }
+
+      setNotification({
+        message: selectedTeam.gloriousDraftedBy?.userId === currentUser.id
+          ? "Has liberado tu Selección Gloriosa." 
+          : `Has fichado a ${selectedTeam.name} como tu Selección Gloriosa (+3 pts por victoria).`,
+        type: 'success'
+      });
+
+      loadDashboardData();
+    } catch (err) {
+      setNotification({ message: "Error de red al seleccionar selección gloriosa.", type: 'error' });
+    }
+  };
+
   // Draft Selection Handler - Top Scorer Predict
   const handleSelectTopScorer = async (player: any) => {
     try {
@@ -1528,8 +1566,9 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                 <ul className="text-xs text-slate-400 space-y-1 list-disc list-inside">
                   <li><strong className="text-slate-200">+3 Puntos</strong> por acertar el marcador exacto de un partido.</li>
                   <li><strong className="text-slate-200">+1 Punto</strong> por acertar la tendencia (ganador o empate).</li>
-                  <li><strong className="text-slate-200">+1 Punto</strong> por cada gol o asistencia real marcado por tu <strong>Jugador Estrella</strong> del Draft.</li>
+                  <li><strong className="text-slate-200">+1 Punto</strong> por cada gol o asistencia real marcado por tus <strong>2 Jugadores Exclusivos</strong> (de selecciones distintas).</li>
                   <li><strong className="text-slate-200">+1 Punto Extra</strong> si tu equipo del Draft avanza de ronda.</li>
+                  <li><strong className="text-slate-200">+3 Puntos</strong> por cada victoria real obtenida por tu <strong>Selección Gloriosa</strong>.</li>
                   <li><strong className="text-slate-200">+10 Puntos</strong> al final del torneo si aciertas la Bota de Oro.</li>
                 </ul>
               </div>
@@ -1606,11 +1645,11 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <h3 className="text-lg font-bold flex items-center gap-2 text-slate-200">
                   <span className="h-2 w-2 rounded-full bg-red-500" />
-                  2. Plantilla de Jugador Exclusivo
+                  2. Plantilla de Jugadores Exclusivos
                 </h3>
-                {myMemberInfo?.selectedPlayerName && (
+                {(myMemberInfo?.selectedPlayerId || myMemberInfo?.selectedPlayer2Id) && (
                   <span className="text-xs bg-red-950/20 text-red-400 px-3 py-1 rounded-full border border-red-500/30 font-semibold">
-                    Fichado: {myMemberInfo.selectedPlayerName}
+                    Fichados: {[myMemberInfo.selectedPlayerName, myMemberInfo.selectedPlayer2Name].filter(Boolean).join(" • ")}
                   </span>
                 )}
               </div>
@@ -1673,7 +1712,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                             {isMine ? (
                               <button 
                                 onClick={() => handleSelectPlayer(player.apiId)}
-                                className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/30 text-red-300 border border-red-500/40 hover:bg-red-600/50 transition-all duration-150"
+                                className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/30 text-red-300 border border-red-500/40 hover:bg-red-600/50 transition-all duration-150 cursor-pointer"
                               >
                                 Liberar
                               </button>
@@ -1684,7 +1723,7 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                             ) : (
                               <button
                                 onClick={() => handleSelectPlayer(player.apiId)}
-                                className="px-3 py-1 text-[10px] font-bold rounded-lg bg-white text-slate-950 hover:bg-slate-200 transition-all duration-150 shadow"
+                                className="px-3 py-1 text-[10px] font-bold rounded-lg bg-white text-slate-950 hover:bg-slate-200 transition-all duration-150 shadow cursor-pointer"
                               >
                                 Fichar
                               </button>
@@ -1695,51 +1734,86 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                   </div>
                 </div>
 
-                {/* Right side: Your Player Card */}
-                <div className="lg:col-span-5">
-                  <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 flex flex-col items-center justify-center text-center h-full min-h-[250px] relative overflow-hidden bg-gradient-to-tr from-slate-950 via-slate-900/60 to-slate-950">
-                    <div className="absolute top-0 right-0 h-40 w-40 bg-red-500/5 rounded-full blur-3xl" />
-                    
+                {/* Right side: Your Player Cards (Max 2, different selections) */}
+                <div className="lg:col-span-5 flex flex-col gap-4">
+                  {/* Card 1 */}
+                  <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex items-center gap-4 bg-gradient-to-tr from-slate-950 via-slate-900/40 to-slate-950 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 h-24 w-24 bg-red-500/5 rounded-full blur-2xl" />
                     {myMemberInfo?.selectedPlayerId ? (
                       (() => {
                         const myPlayer = players.find(p => p.apiId === myMemberInfo.selectedPlayerId);
                         if (!myPlayer) return null;
                         return (
-                          <div className="space-y-4 animate-fade-in w-full">
-                            <div className="relative inline-block">
-                              <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-red-550 shadow-xl mx-auto">
+                          <div className="flex items-center justify-between w-full z-10 relative">
+                            <div className="flex items-center gap-3">
+                              <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-red-500/50 shadow-md shrink-0">
                                 <img src={myPlayer.photoUrl} alt={myPlayer.name} className="h-full w-full object-cover" />
                               </div>
-                              <span className="absolute bottom-0 right-1 bg-red-600 text-white p-1.5 rounded-full text-xs shadow-lg">
-                                <UserCheck className="h-3 w-3" />
-                              </span>
+                              <div>
+                                <p className="text-[9px] font-semibold text-red-400 tracking-wide uppercase">{myPlayer.position} Exclusivo 1</p>
+                                <h4 className="text-sm font-bold text-slate-100 truncate max-w-[150px]">{myPlayer.name}</h4>
+                                <p className="text-xs text-slate-400">{myPlayer.teamName}</p>
+                              </div>
                             </div>
-                            <div className="space-y-1">
-                              <p className="text-xs font-semibold text-red-400 tracking-wide uppercase">{myPlayer.position}</p>
-                              <h4 className="text-xl font-bold font-display">{myPlayer.name}</h4>
-                              <p className="text-sm text-slate-300 font-medium">{myPlayer.teamName}</p>
-                            </div>
-                            <p className="text-[11px] text-slate-400 max-w-[200px] mx-auto leading-relaxed">
-                              Cada gol o asistencia oficial que marque sumará <strong className="text-emerald-400">+1 punto</strong> directo a tu marcador.
-                            </p>
                             <button
                               onClick={() => handleSelectPlayer(myPlayer.apiId)}
-                              className="px-4 py-1.5 text-xs text-slate-400 hover:text-red-400 font-semibold border border-slate-800 hover:border-red-500/20 hover:bg-red-500/5 rounded-xl transition-all duration-200"
+                              className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/20 text-red-300 border border-red-500/30 hover:bg-red-550/30 transition-all cursor-pointer shrink-0"
                             >
-                              Cambiar Fichaje
+                              Liberar
                             </button>
                           </div>
                         );
                       })()
                     ) : (
-                      <div className="space-y-3 p-4">
-                        <div className="h-16 w-16 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-slate-600 mx-auto">
-                          <User className="h-8 w-8" />
+                      <div className="flex items-center gap-3 py-2 text-left z-10 relative w-full">
+                        <div className="h-12 w-12 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-slate-650 shrink-0">
+                          <User className="h-6 w-6" />
                         </div>
-                        <h4 className="font-bold text-slate-300 text-sm">Sin Jugador Seleccionado</h4>
-                        <p className="text-xs text-slate-500 max-w-[220px] leading-relaxed">
-                          Busca un jugador en el buscador de la izquierda y haz clic en "Fichar" para reclamarlo en exclusiva.
-                        </p>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-350">Jugador Exclusivo 1</h4>
+                          <p className="text-[10px] text-slate-500 leading-tight">Busca y ficha tu primer jugador.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card 2 */}
+                  <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex items-center gap-4 bg-gradient-to-tr from-slate-950 via-slate-900/40 to-slate-950 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 h-24 w-24 bg-red-500/5 rounded-full blur-2xl" />
+                    {myMemberInfo?.selectedPlayer2Id ? (
+                      (() => {
+                        const myPlayer = players.find(p => p.apiId === myMemberInfo.selectedPlayer2Id);
+                        if (!myPlayer) return null;
+                        return (
+                          <div className="flex items-center justify-between w-full z-10 relative">
+                            <div className="flex items-center gap-3">
+                              <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-red-500/50 shadow-md shrink-0">
+                                <img src={myPlayer.photoUrl} alt={myPlayer.name} className="h-full w-full object-cover" />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-semibold text-red-400 tracking-wide uppercase">{myPlayer.position} Exclusivo 2</p>
+                                <h4 className="text-sm font-bold text-slate-100 truncate max-w-[150px]">{myPlayer.name}</h4>
+                                <p className="text-xs text-slate-400">{myPlayer.teamName}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleSelectPlayer(myPlayer.apiId)}
+                              className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-650/20 text-red-300 border border-red-500/30 hover:bg-red-550/30 transition-all cursor-pointer shrink-0"
+                            >
+                              Liberar
+                            </button>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="flex items-center gap-3 py-2 text-left z-10 relative w-full">
+                        <div className="h-12 w-12 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-slate-650 shrink-0">
+                          <User className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-350">Jugador Exclusivo 2</h4>
+                          <p className="text-[10px] text-slate-500 leading-tight">Ficha un segundo jugador de otra selección.</p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1818,6 +1892,69 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN 4: DRAFT DE SELECCIÓN GLORIOSA */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-slate-200">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  4. Selección Gloriosa (Floja)
+                </h3>
+                {myMemberInfo?.selectedWeakTeamName && (
+                  <span className="text-xs bg-blue-550/20 text-blue-450 px-3 py-1 rounded-full border border-blue-500/30 font-semibold">
+                    Tu Selección Gloriosa: {myMemberInfo.selectedWeakTeamName}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-450 max-w-2xl leading-relaxed">
+                Elige una de las 10 selecciones más débiles del Mundial. Cada victoria real de este equipo sumará <strong className="text-emerald-450 font-bold">+3 puntos</strong> directos a tu quiniela. Fichaje exclusivo por grupo.
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                {(() => {
+                  const WEAK_TEAMS_IDS = [2386, 5530, 4673, 1548, 1567, 1533, 1569, 23, 1568, 1531];
+                  const weakTeams = teams.filter(t => WEAK_TEAMS_IDS.includes(t.apiId));
+                  
+                  return weakTeams.map(team => {
+                    const isTaken = team.gloriousDraftedBy !== null;
+                    const isMine = team.gloriousDraftedBy?.userId === currentUser.id;
+                    const isTakenByOther = isTaken && !isMine;
+
+                    return (
+                      <button
+                        key={team.apiId}
+                        disabled={isTakenByOther}
+                        onClick={() => handleSelectWeakTeam(team.apiId)}
+                        className={`glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-3 transition-all duration-200 ${
+                          isMine 
+                            ? 'border-2 border-blue-500 bg-gradient-to-b from-blue-950/10 to-slate-900/60 ring-2 ring-blue-500/20' 
+                            : isTakenByOther 
+                              ? 'opacity-40 grayscale cursor-not-allowed border-slate-850' 
+                              : 'hover:border-slate-650 hover:bg-slate-800/40 hover:-translate-y-1 cursor-pointer'
+                        }`}
+                      >
+                        <img 
+                          src={team.flagUrl} 
+                          alt={team.name} 
+                          className="h-10 w-16 object-cover rounded shadow-md border border-slate-800"
+                        />
+                        <div className="text-center">
+                          <p className="text-xs font-bold text-slate-200 truncate max-w-[120px]">{team.name}</p>
+                          {isMine && <p className="text-[10px] text-blue-400 font-semibold mt-1">Tuya</p>}
+                          {isTakenByOther && (
+                            <p className="text-[9px] text-red-400 font-semibold mt-1 truncate max-w-[110px]">
+                              Por {team.gloriousDraftedBy?.userName}
+                            </p>
+                          )}
+                          {!isTaken && <p className="text-[10px] text-slate-500 mt-1">Disponible</p>}
+                        </div>
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </div>
 

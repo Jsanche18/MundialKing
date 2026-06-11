@@ -57,7 +57,9 @@ export async function GET(req: Request) {
           email: member.user.email,
           totalPoints: member.totalPoints,
           selectedTeamId: member.selectedTeamId,
-          selectedPlayerId: member.selectedPlayerId
+          selectedPlayerId: member.selectedPlayerId,
+          selectedPlayer2Id: member.selectedPlayer2Id,
+          selectedWeakTeamId: member.selectedWeakTeamId
         }))
       };
     });

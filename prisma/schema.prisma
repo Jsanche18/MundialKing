@@ -41,17 +41,23 @@ model GroupMember {
   draftGoalsPoints     Int      @default(0)
   selectedTeamId       Int?
   selectedPlayerId     Int?
+  selectedPlayer2Id    Int?
+  selectedWeakTeamId   Int?
   predictedTopScorerId Int?
 
   user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   group              Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  selectedTeam       Team?   @relation(fields: [selectedTeamId], references: [apiId], onDelete: SetNull)
-  selectedPlayer     Player? @relation(fields: [selectedPlayerId], references: [apiId], onDelete: SetNull)
+  selectedTeam       Team?   @relation(name: "SelectedTeam", fields: [selectedTeamId], references: [apiId], onDelete: SetNull)
+  selectedPlayer     Player? @relation(name: "SelectedPlayer1", fields: [selectedPlayerId], references: [apiId], onDelete: SetNull)
+  selectedPlayer2    Player? @relation(name: "SelectedPlayer2", fields: [selectedPlayer2Id], references: [apiId], onDelete: SetNull)
+  selectedWeakTeam   Team?   @relation(name: "SelectedWeakTeam", fields: [selectedWeakTeamId], references: [apiId], onDelete: SetNull)
   predictedTopScorer Player? @relation(name: "TopScorerPrediction", fields: [predictedTopScorerId], references: [apiId], onDelete: SetNull)
 
   // Enforce unique draft picks per group
   @@unique([groupId, selectedTeamId])
   @@unique([groupId, selectedPlayerId])
+  @@unique([groupId, selectedPlayer2Id])
+  @@unique([groupId, selectedWeakTeamId])
   // Allow only one membership entry per user in a group
   @@unique([userId, groupId])
 }
@@ -62,9 +68,10 @@ model Team {
   flagUrl      String
   currentStage String        @default("Fase de Grupos")
   
-  groupMembers GroupMember[]
-  homeMatches  Match[]       @relation("HomeMatches")
-  awayMatches  Match[]       @relation("AwayMatches")
+  groupMembers     GroupMember[] @relation("SelectedTeam")
+  weakGroupMembers GroupMember[] @relation("SelectedWeakTeam")
+  homeMatches      Match[]       @relation("HomeMatches")
+  awayMatches      Match[]       @relation("AwayMatches")
   
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -77,7 +84,8 @@ model Player {
   position     String        // e.g., Delantero, Centrocampista
   photoUrl     String
 
-  groupMembers   GroupMember[]
+  groupMembers        GroupMember[] @relation("SelectedPlayer1")
+  groupMembers2       GroupMember[] @relation("SelectedPlayer2")
   predictedTopScorers GroupMember[] @relation("TopScorerPrediction")
 
   createdAt    DateTime      @default(now())

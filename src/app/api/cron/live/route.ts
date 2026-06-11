@@ -119,6 +119,15 @@ export async function GET(req: Request) {
         finishedMatchesCount++;
         console.log(`Partido ${matchId} finalizado. Obteniendo eventos de goles/asistencias...`);
 
+        let winningTeamId: number | null = null;
+        if (homeGoals !== null && awayGoals !== null) {
+          if (homeGoals > awayGoals) {
+            winningTeamId = dbMatch.homeTeamId;
+          } else if (awayGoals > homeGoals) {
+            winningTeamId = dbMatch.awayTeamId;
+          }
+        }
+
         let events: any[] = [];
         if (isSimulation) {
           events = fixtureInfo.events || [];
@@ -186,10 +195,9 @@ export async function GET(req: Request) {
               });
             }
 
-            // B. PUNTUAR EVENTOS DE JUGADOR DRAFT EXCLUSIVO
-            if (member.selectedPlayerId) {
-              const draftedPlayerId = member.selectedPlayerId;
-
+            // B. PUNTUAR EVENTOS DE JUGADORES DRAFT EXCLUSIVO (AMBOS SLOTS)
+            const playerIds = [member.selectedPlayerId, member.selectedPlayer2Id].filter(Boolean) as number[];
+            for (const draftedPlayerId of playerIds) {
               // Filtrar goles y asistencias del jugador en este encuentro
               const playerGoals = events.filter(e => e.type === "Goal" && e.player?.id === draftedPlayerId).length;
               const playerAssists = events.filter(e => e.type === "Goal" && e.assist?.id === draftedPlayerId).length;
@@ -197,8 +205,18 @@ export async function GET(req: Request) {
               const totalGoalsAndAssists = playerGoals + playerAssists;
               if (totalGoalsAndAssists > 0) {
                 pointsGained += totalGoalsAndAssists;
-                draftGoalsIncrement = totalGoalsAndAssists;
+                draftGoalsIncrement += totalGoalsAndAssists;
               }
+            }
+
+            // C. PUNTUAR VICTORIA DE SELECCIÓN GLORIOSA (+3 PUNTOS)
+            const WEAK_TEAMS_IDS = [2386, 5530, 4673, 1548, 1567, 1533, 1569, 23, 1568, 1531];
+            if (
+              winningTeamId && 
+              member.selectedWeakTeamId === winningTeamId && 
+              WEAK_TEAMS_IDS.includes(winningTeamId)
+            ) {
+              pointsGained += 3;
             }
 
             // Guardar incremento en PostgreSQL

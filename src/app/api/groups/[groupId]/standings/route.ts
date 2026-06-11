@@ -11,6 +11,8 @@ export async function GET(req: Request, { params }: { params: { groupId: string 
         user: true,
         selectedTeam: true,
         selectedPlayer: true,
+        selectedPlayer2: true,
+        selectedWeakTeam: true,
         predictedTopScorer: true
       },
       orderBy: { totalPoints: "desc" }
@@ -28,6 +30,10 @@ export async function GET(req: Request, { params }: { params: { groupId: string 
       selectedTeamName: m.selectedTeam ? m.selectedTeam.name : null,
       selectedPlayerId: m.selectedPlayerId,
       selectedPlayerName: m.selectedPlayer ? m.selectedPlayer.name : null,
+      selectedPlayer2Id: m.selectedPlayer2Id,
+      selectedPlayer2Name: m.selectedPlayer2 ? m.selectedPlayer2.name : null,
+      selectedWeakTeamId: m.selectedWeakTeamId,
+      selectedWeakTeamName: m.selectedWeakTeam ? m.selectedWeakTeam.name : null,
       predictedTopScorerId: m.predictedTopScorerId,
       predictedTopScorerName: m.predictedTopScorer ? m.predictedTopScorer.name : null
     }));
