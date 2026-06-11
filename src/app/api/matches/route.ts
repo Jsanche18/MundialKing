@@ -1,16 +1,40 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { syncLiveMatches } from "@/lib/live-sync";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
     const session = await auth();
-    const userId = session?.user?.id;
+    const userId = session?.user?.id || req.headers.get("X-User-Id");
     
     const { searchParams } = new URL(req.url);
     const groupId = searchParams.get("groupId");
+
+    // Fallback sync for Hobby plans: Check if there are active matches that haven't been updated in the last 5 minutes
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - 300 * 60 * 1000); // 5 hours
+    const activeMatches = await db.match.findMany({
+      where: {
+        status: { not: "FT" },
+        kickoffTimestamp: { lte: now, gte: windowStart }
+      }
+    });
+
+    if (activeMatches.length > 0) {
+      const lastUpdated = Math.max(...activeMatches.map(m => m.updatedAt.getTime()));
+      const fiveMinutesAgo = now.getTime() - 5 * 60 * 1000;
+      if (lastUpdated < fiveMinutesAgo) {
+        console.log("Hobby Live Sync: Triggering real-time update from matches API...");
+        try {
+          await syncLiveMatches();
+        } catch (e) {
+          console.error("Error in Hobby Live Sync:", e);
+        }
+      }
+    }
 
     const matches = await db.match.findMany({
       include: {
