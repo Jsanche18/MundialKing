@@ -1648,6 +1648,8 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                               timeStatus={timeStatus} 
                               isLive={isLive}
                               onSavePrediction={handleSavePrediction}
+                              members={members}
+                              currentUserId={currentUser.id}
                             />
                           );
                         })}
@@ -1882,6 +1884,8 @@ export default function Dashboard({ currentUser, groupId, onGroupIdChange, onLog
                                 timeStatus={timeStatus} 
                                 isLive={isLive}
                                 onSavePrediction={handleSavePrediction}
+                                members={members}
+                                currentUserId={currentUser.id}
                               />
                             );
                           })}
@@ -3344,9 +3348,12 @@ interface MatchCardProps {
   timeStatus: { text: string; style: string };
   isLive: boolean;
   onSavePrediction: (matchId: number, home: number | null, away: number | null) => void;
+  members?: any[];
+  currentUserId?: string;
 }
 
-function MatchCard({ match, locked, timeStatus, isLive, onSavePrediction }: MatchCardProps) {
+function MatchCard({ match, locked, timeStatus, isLive, onSavePrediction, members = [], currentUserId }: MatchCardProps) {
+  const [showAllPredictions, setShowAllPredictions] = useState(false);
   const [homeInput, setHomeInput] = useState<string>(
     match.userPrediction?.homeGoals !== null && match.userPrediction?.homeGoals !== undefined
       ? String(match.userPrediction.homeGoals)
@@ -3560,6 +3567,56 @@ function MatchCard({ match, locked, timeStatus, isLive, onSavePrediction }: Matc
           </button>
         </div>
       </div>
+
+      {locked && (
+        <div className="mt-1 pt-3 border-t border-slate-800/40">
+          <button
+            onClick={() => setShowAllPredictions(!showAllPredictions)}
+            className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium py-1.5 px-2 rounded bg-slate-950/20 border border-slate-850/60 hover:bg-slate-900/30 cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-indigo-405" />
+              Pronósticos de la sala ({match.otherPredictions?.length || 0})
+            </span>
+            {showAllPredictions ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+          
+          <AnimatePresence>
+            {showAllPredictions && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden mt-2 space-y-1.5"
+              >
+                {(() => {
+                  const otherMembers = members.filter(m => m.userId !== currentUserId);
+                  if (otherMembers.length === 0) {
+                    return <p className="text-[10px] text-slate-500 italic text-center py-1">No hay otros miembros en la sala.</p>;
+                  }
+                  
+                  return otherMembers.map(m => {
+                    const pred = match.otherPredictions?.find((p: any) => p.userId === m.userId);
+                    return (
+                      <div key={m.userId} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-slate-950/40 border border-slate-900/60 hover:border-slate-850/50 transition-colors">
+                        <span className="text-slate-300 font-semibold truncate max-w-[150px]">{m.userName}</span>
+                        {pred ? (
+                          <span className="font-mono bg-slate-900 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20 text-[11px] font-bold">
+                            {pred.homeGoals} - {pred.awayGoals}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-550 italic font-medium bg-slate-900/20 px-2 py-0.5 rounded border border-slate-850/20">Sin pronóstico</span>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }

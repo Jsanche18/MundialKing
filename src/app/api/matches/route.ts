@@ -39,15 +39,37 @@ export async function GET(req: Request) {
       include: {
         homeTeam: true,
         awayTeam: true,
-        predictions: userId && groupId ? {
-          where: { userId, groupId }
-        } : false
+        predictions: {
+          where: { groupId: groupId || "" },
+          include: {
+            user: {
+              select: { id: true, name: true }
+            }
+          }
+        }
       },
       orderBy: { kickoffTimestamp: "asc" }
     });
 
+    const nowTime = now.getTime();
     const formattedMatches = matches.map(match => {
-      const pred = match.predictions?.[0] || null;
+      const userPred = match.predictions?.find(p => p.userId === userId) || null;
+      
+      const kickoffTime = new Date(match.kickoffTimestamp).getTime();
+      const diffMins = (kickoffTime - nowTime) / (1000 * 60);
+      const isLocked = match.status === "FT" || match.status === "LIVE" || diffMins <= 15;
+
+      const otherPredictions = isLocked && match.predictions
+        ? match.predictions
+            .filter(p => p.userId !== userId)
+            .map(p => ({
+              userId: p.userId,
+              userName: p.user.name,
+              homeGoals: p.homeGoals,
+              awayGoals: p.awayGoals
+            }))
+        : [];
+
       return {
         apiId: match.apiId,
         homeTeam: {
@@ -62,10 +84,11 @@ export async function GET(req: Request) {
         status: match.status,
         homeGoals: match.homeGoals,
         awayGoals: match.awayGoals,
-        userPrediction: pred ? {
-          homeGoals: pred.homeGoals,
-          awayGoals: pred.awayGoals
-        } : null
+        userPrediction: userPred ? {
+          homeGoals: userPred.homeGoals,
+          awayGoals: userPred.awayGoals
+        } : null,
+        otherPredictions
       };
     });
 
