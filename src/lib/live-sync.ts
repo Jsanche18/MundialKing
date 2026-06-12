@@ -4,15 +4,17 @@ export async function syncLiveMatches(forceRun = false, simulateRun = false) {
   // Comprobar si hay partidos activos en PostgreSQL para proteger la cuota
   // Ventana de juego activa: status != "FT" y kickoff <= ahora y kickoff >= ahora - 300 minutos (5 horas)
   const now = new Date();
-  const windowStart = new Date(now.getTime() - 300 * 60 * 1000);
 
   const activeMatchesInDb = await db.match.findMany({
     where: {
       status: { not: "FT" },
       kickoffTimestamp: {
-        lte: now,
-        gte: windowStart
+        lte: now
       }
+    },
+    include: {
+      homeTeam: true,
+      awayTeam: true
     }
   });
 
@@ -69,20 +71,62 @@ export async function syncLiveMatches(forceRun = false, simulateRun = false) {
     }
   } else {
     console.log("Realizando petición externa a API-Football (Directa v3.football.api-sports.io)...");
-    // Consulta directa a la API externa de API-Sports (Football)
-    const response = await fetch("https://v3.football.api-sports.io/fixtures?live=all", {
-      method: "GET",
-      headers: {
-        "x-apisports-key": apiKey
+    
+    // Group active matches by date (YYYY-MM-DD)
+    const datesToQuery: string[] = [];
+    for (const dbMatch of activeMatchesInDb) {
+      const dateStr = dbMatch.kickoffTimestamp.toISOString().split("T")[0];
+      if (!datesToQuery.includes(dateStr)) {
+        datesToQuery.push(dateStr);
       }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error al consumir API-Football: ${response.statusText}`);
     }
-
-    const data = await response.json();
-    liveFixtures = data.response || [];
+    
+    console.log(`Smart Cron: Fechas activas para consultar: ${datesToQuery.join(", ")}`);
+    
+    for (const dateStr of datesToQuery) {
+      try {
+        const response = await fetch(`https://v3.football.api-sports.io/fixtures?date=${dateStr}`, {
+          method: "GET",
+          headers: {
+            "x-apisports-key": apiKey || ""
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const list = data.response || [];
+          console.log(`Smart Cron: Descargados ${list.length} partidos para la fecha ${dateStr}`);
+          
+          for (const item of list) {
+            // Check if it is a World Cup match
+            if (item.league.id === 1) {
+              const matched = activeMatchesInDb.find(
+                m => m.homeTeamId === item.teams.home.id && m.awayTeamId === item.teams.away.id
+              );
+              if (matched) {
+                liveFixtures.push({
+                  fixture: {
+                    id: matched.apiId,
+                    realId: item.fixture.id,
+                    status: { short: item.fixture.status.short }
+                  },
+                  goals: {
+                    home: item.goals.home,
+                    away: item.goals.away
+                  },
+                  events: [] // Will fetch events later in scoring logic if FT
+                });
+                console.log(`Smart Cron: Match ${matched.apiId} (${matched.homeTeam.name} vs ${matched.awayTeam.name}) matched from real API. Score: ${item.goals.home}-${item.goals.away}, Status: ${item.fixture.status.short}`);
+              }
+            }
+          }
+        } else {
+          console.error(`Smart Cron: Error consultando fixtures para ${dateStr}: ${response.statusText}`);
+        }
+      } catch (err: any) {
+        console.error(`Smart Cron: Error de red consultando fixtures para ${dateStr}:`, err.message);
+      }
+    }
   }
 
   // Inject simulated World Cup 2026 matches that are currently in progress or finished
@@ -205,11 +249,13 @@ export async function syncLiveMatches(forceRun = false, simulateRun = false) {
 
       let events: any[] = [];
       const isSimulatedMatch = matchId >= 2026001 && matchId <= 2026104;
-      if (isSimulation || isSimulatedMatch) {
+      const hasRealId = !!fixtureInfo.fixture.realId;
+      if (isSimulation || (isSimulatedMatch && !hasRealId)) {
         events = fixtureInfo.events || [];
       } else {
-        // Consultar eventos del partido directamente a API-Football
-        const eventsResponse = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${matchId}`, {
+        // Consultar eventos del partido directamente a API-Football utilizando el ID real
+        const eventsFixtureId = fixtureInfo.fixture.realId || matchId;
+        const eventsResponse = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${eventsFixtureId}`, {
           method: "GET",
           headers: {
             "x-apisports-key": apiKey || ""

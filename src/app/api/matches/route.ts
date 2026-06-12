@@ -15,11 +15,10 @@ export async function GET(req: Request) {
 
     // Fallback sync for Hobby plans: Check if there are active matches that haven't been updated in the last 5 minutes
     const now = new Date();
-    const windowStart = new Date(now.getTime() - 300 * 60 * 1000); // 5 hours
     const activeMatches = await db.match.findMany({
       where: {
         status: { not: "FT" },
-        kickoffTimestamp: { lte: now, gte: windowStart }
+        kickoffTimestamp: { lte: now }
       }
     });
 
